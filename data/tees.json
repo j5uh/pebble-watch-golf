@@ -1,0 +1,12 @@
+{
+  "course": "Sharpstown Park Golf Course",
+  "source": "USGA National Course Rating Database",
+  "sourceUrl": "https://ncrdb.usga.org/courseTeeInfo?CourseID=20651",
+  "verifiedDate": "2026-10-23",
+  "tees": [
+    {"name": "BLUE", "totalYards": 6602},
+    {"name": "WHITE", "totalYards": 6292},
+    {"name": "GOLD", "totalYards": 5925},
+    {"name": "RED", "totalYards": 5147}
+  ]
+}

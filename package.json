@@ -1,0 +1,50 @@
+{
+  "name": "pebble-golf",
+  "author": "Pebble Golf",
+  "version": "0.2.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Pebble Golf",
+    "uuid": "1ab812f6-5d39-4e48-85dc-2a56babb1850",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "gabbro"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "Ready",
+      "Hole",
+      "Request",
+      "Center",
+      "Front",
+      "Back",
+      "Accuracy",
+      "Status",
+      "Units",
+      "Revision",
+      "FixAge",
+      "GpsState",
+      "Par",
+      "LayupTarget",
+      "LayupShot",
+      "Hazards",
+      "FixTime",
+      "MapX",
+      "MapY",
+      "GreenEdges"
+    ],
+    "resources": {
+      "media": []
+    },
+    "capabilities": [
+      "location"
+    ]
+  }
+}
