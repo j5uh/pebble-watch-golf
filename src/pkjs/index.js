@@ -48,6 +48,7 @@ function publish() {
     p.Accuracy=Math.round(fix.coords.accuracy); p.FixAge=Math.floor(fixAge()/1000); p.FixTime=Math.floor(fix.timestamp/1000);
     var player=mapPoint(position,h.map); p.MapX=player[0]; p.MapY=player[1];
     p.Par=h.par; p.LayupShot=l?Math.round(l.shot*factor):-1;
+    var layupPoint=l?mapPoint(l.target,h.map):[-1000,-1000]; p.LayupX=layupPoint[0]; p.LayupY=layupPoint[1];
     p.Hazards=geo.hazardDistances(position,h,true).slice(0,8).map(function(x) {
       var near=mapPoint(x.reachPoint,h.map),far=mapPoint(x.carryPoint,h.map);
       return x.name+','+Math.round(x.reach*factor)+','+Math.round(x.carry*factor)+','+x.osmId+','+near[0]+','+near[1]+','+far[0]+','+far[1];

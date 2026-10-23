@@ -24,7 +24,7 @@ h.request({Request:1});assert.equal(h.requests.length,1,'no overlapping refreshe
 h.requests[0].ok(h.fix());let yards=h.last();assert.equal(yards.GreenEdges.split(',').length,4);assert.ok(yards.Front<yards.Center && yards.Center<yards.Back);
 assert.equal(yards.MapX,Math.round(course.holes[0].map.offset[0]*16));
 assert.equal(yards.MapY,Math.round(course.holes[0].map.offset[1]*16));
-assert.ok(yards.LayupShot>0);assert.ok(yards.Hazards.includes('BUNKER'));
+assert.ok(yards.LayupShot>0);assert.ok(yards.LayupX>-1000 && yards.LayupY>-1000);assert.ok(yards.Hazards.includes('BUNKER'));
 for (const row of yards.Hazards.split('|')) {const fields=row.split(',');assert.equal(fields.length,8); assert.ok(fields.slice(4).every(v=>Number.isFinite(Number(v))));assert.ok(course.holes[0].hazards.some(h=>h.osmId===fields[3]), 'hazard card carries its exact mapped feature ID');}
 h.request({Units:1,Revision:3});let meters=h.last();assert.ok(Math.abs(meters.Center-yards.Center*0.9144)<1);
 assert.equal(meters.Revision,3);assert.equal(meters.LayupTarget,100);

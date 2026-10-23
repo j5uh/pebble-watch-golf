@@ -17,7 +17,7 @@ static Screen screen=SCREEN_TEES;
 static int hole=1, units=0, tee=1, target=100, revision=1, page=0, hazard_index=0, menu_index=0;
 static int middle=-1, front=-1, back=-1, accuracy=0, age_at_receive=0, gps_state=1, layup_shot=-1;
 static Hazard hazards[MAX_HAZARDS];
-static int hazard_count=0, map_x=-1000, map_y=-1000;
+static int hazard_count=0, map_x=-1000, map_y=-1000, layup_x=-1000, layup_y=-1000;
 static GPoint green_front,green_back;
 static bool green_edges_valid=false;
 static bool ready=false, valid=false, round_started=false, phone_connected=true;
@@ -152,6 +152,7 @@ static void inbox(DictionaryIterator *iter,void *context) {
       if (count==4) {green_front=GPoint(values[0],values[1]);green_back=GPoint(values[2],values[3]);green_edges_valid=true;}
     }
     map_x=integer(iter,MESSAGE_KEY_MapX,-1000); map_y=integer(iter,MESSAGE_KEY_MapY,-1000);
+    layup_x=integer(iter,MESSAGE_KEY_LayupX,-1000); layup_y=integer(iter,MESSAGE_KEY_LayupY,-1000);
     layup_shot=integer(iter,MESSAGE_KEY_LayupShot,-1);
     Tuple *h=dict_find(iter,MESSAGE_KEY_Hazards); parse_hazards(h?h->value->cstring:"");
     valid=age_at_receive>=0 && age_at_receive<=MAX_FIX_AGE; received=time(NULL);
@@ -168,7 +169,7 @@ static void tick(struct tm *now,TimeUnits changed) {
   if (round_started && ready && phone_connected && time(NULL)-last_request>=15 && (!valid || fix_age()>12)) request(false);
   if (screen==SCREEN_PLAY && (now->tm_sec%5==0 || (valid && fix_age()==MAX_FIX_AGE+1))) render();
 }
-static void invalidate(void) {revision++; valid=false; hazard_count=0; page=0; hazard_index=0;}
+static void invalidate(void) {revision++; valid=false; hazard_count=0; hazard_index=0;}
 static void change(int delta) {
   if (screen==SCREEN_TEES) tee=(tee+delta+4)%4;
   else if (screen==SCREEN_TARGET) {target+=delta*25; if (target<50) target=200; if (target>200) target=50;}
@@ -271,26 +272,34 @@ static void draw_heading(GContext *ctx) {
   }
 }
 static GPoint map_xy(int px,int py,MapCamera c) {
-  float x=(px-c.x)*c.zoom/16+100, y=(py-c.y)*c.zoom/16+75;
+  float x=(px-c.x)*c.zoom/16+MAP_W/2, y=(py-c.y)*c.zoom/16+MAP_H/2;
   // Limit distant geometry to the representable range before viewport clipping.
   return GPoint((int)camera_max(-10000,camera_min(10000,x)),(int)camera_max(-10000,camera_min(10000,y)));
 }
 static GPoint map_point(GPoint p,MapCamera c) {return map_xy(p.x,p.y,c);}
-static bool map_visible(GPoint p) {return p.x>=6 && p.x<=194 && p.y>=6 && p.y<=144;}
-static MapCamera camera_for_hole(const HoleMap *map) {
-  int minx=map->green.x,maxx=minx,miny=map->green.y,maxy=miny;
+static bool map_visible(GPoint p) {return p.x>=6 && p.x<=MAP_W-6 && p.y>=6 && p.y<=MAP_H-6;}
+static void grow(int *box,GPoint p) {
+  if (p.x<box[0]) box[0]=p.x;
+  if (p.y<box[1]) box[1]=p.y;
+  if (p.x>box[2]) box[2]=p.x;
+  if (p.y>box[3]) box[3]=p.y;
+}
+// *near reports whether the live player is on this hole and belongs in the frame.
+static MapCamera camera_for_hole(const HoleMap *map,bool *near) {
+  int all[4]={map->tee.x,map->tee.y,map->tee.x,map->tee.y}, frame[4]={map->green.x,map->green.y,map->green.x,map->green.y};
+  float meters=units?middle:middle*0.9144f;
   for (int i=0;i<map->count;i++) {
     const MapShape *shape=&MAP_SHAPES[map->start+i];
-    if (shape->kind!=1 && !(shape->kind==0 && (!usable() || (units?middle:middle*0.9144f)>=220))) continue;
-    for (int j=0;j<shape->count;j++) {
-      GPoint p=MAP_POINTS[shape->start+j];
-      if (p.x<minx) minx=p.x;
-      if (p.x>maxx) maxx=p.x;
-      if (p.y<miny) miny=p.y;
-      if (p.y>maxy) maxy=p.y;
-    }
+    for (int j=0;j<shape->count;j++) grow(all,MAP_POINTS[shape->start+j]);
   }
-  return map_camera_hole(map_x,map_y,map->tee.x,map->tee.y,minx,miny,maxx,maxy,units?middle:middle*0.9144f,usable());
+  *near=usable() && map_player_near(map_x,map_y,all[0],all[1],all[2],all[3]);
+  bool approach=*near && meters<220;
+  for (int i=0;i<map->count;i++) {
+    const MapShape *shape=&MAP_SHAPES[map->start+i];
+    if (shape->kind!=1 && (approach || (shape->kind!=0 && shape->kind!=5))) continue;
+    for (int j=0;j<shape->count;j++) grow(frame,MAP_POINTS[shape->start+j]);
+  }
+  return map_camera_hole(map_x,map_y,map->tee.x,map->tee.y,frame[0],frame[1],frame[2],frame[3],meters,*near);
 }
 // Clip geometry before rasterizing; distant polygon vertices can otherwise make
 // a tiny local view spend time drawing thousands of off-screen scanlines.
@@ -321,31 +330,26 @@ static GPoint *map_clip_polygon(const GPoint *input,int count,int left,int top,i
   }
   free(b); *out_count=n; return a;
 }
-static bool map_inside(int x,int y,const GPoint *p,int count) {
-  bool inside=false;
-  for (int i=0,j=count-1;i<count;j=i++) {
-    if ((p[i].y>y)!=(p[j].y>y) && x<(int32_t)(p[j].x-p[i].x)*(y-p[i].y)/(p[j].y-p[i].y)+p[i].x) inside=!inside;
-  }
-  return inside;
-}
+// Fill texture one scanline at a time from the clipped polygon's edge crossings.
 static void map_texture(GContext *ctx,const GPoint *points,int count,int kind) {
-  int minx=200,miny=150,maxx=0,maxy=0;
-  for (int i=0;i<count;i++) {
-    if (points[i].x<minx) minx=points[i].x;
-    if (points[i].y<miny) miny=points[i].y;
-    if (points[i].x>maxx) maxx=points[i].x;
-    if (points[i].y>maxy) maxy=points[i].y;
-  }
-  minx=(int)camera_max(0,minx); miny=(int)camera_max(0,miny);
-  maxx=(int)camera_min(199,maxx); maxy=(int)camera_min(149,maxy);
+  int miny=points[0].y,maxy=miny;
+  for (int i=1;i<count;i++) {miny=points[i].y<miny?points[i].y:miny; maxy=points[i].y>maxy?points[i].y:maxy;}
+  int *xs=malloc(count*sizeof(int)); if (!xs) return;
   graphics_context_set_stroke_width(ctx,1);
   graphics_context_set_stroke_color(ctx,kind==2?GColorWindsorTan:kind==3?GColorWhite:GColorIslamicGreen);
   for (int y=miny;y<=maxy;y++) {
-    for (int x=minx;x<=maxx;x++) {
-      bool pattern=kind==2?(x%5==(y%10<5?0:2) && y%5==0):kind==3?(y%7==0 && x%9<6):kind==1?((x+y)%10<3):false;
-      if (pattern && map_inside(x,y,points,count)) graphics_draw_pixel(ctx,GPoint(x,y));
+    if ((kind==2 && y%5) || (kind==3 && y%7)) continue;
+    int n=0;
+    for (int i=0,j=count-1;i<count;j=i++) {
+      if ((points[i].y>y)!=(points[j].y>y)) xs[n++]=(int32_t)(points[j].x-points[i].x)*(y-points[i].y)/(points[j].y-points[i].y)+points[i].x;
+    }
+    for (int i=1;i<n;i++) for (int j=i;j>0 && xs[j-1]>xs[j];j--) {int t=xs[j]; xs[j]=xs[j-1]; xs[j-1]=t;}
+    for (int i=0;i+1<n;i+=2) for (int x=xs[i];x<xs[i+1];x++) {
+      bool pattern=kind==2?x%5==(y%10<5?0:2):kind==3?x%9<6:kind==1?(x+y)%10<3:false;
+      if (pattern) graphics_draw_pixel(ctx,GPoint(x,y));
     }
   }
+  free(xs);
 }
 static void map_route(GContext *ctx,GPoint a,GPoint b) {
   int dx=b.x-a.x,dy=b.y-a.y,steps=abs(dx)>abs(dy)?abs(dx):abs(dy);
@@ -356,14 +360,24 @@ static void map_route(GContext *ctx,GPoint a,GPoint b) {
     graphics_draw_line(ctx,GPoint(a.x+dx*i/steps,a.y+dy*i/steps),GPoint(a.x+dx*end/steps,a.y+dy*end/steps));
   }
 }
+// Where the green-to-player line leaves the padded viewport.
+static GPoint map_edge(GPoint from,GPoint to) {
+  float dx=to.x-from.x, dy=to.y-from.y, t=1;
+  if (to.x<8) t=camera_min(t,(8-from.x)/dx);
+  if (to.x>MAP_W-9) t=camera_min(t,(MAP_W-9-from.x)/dx);
+  if (to.y<8) t=camera_min(t,(8-from.y)/dy);
+  if (to.y>MAP_H-9) t=camera_min(t,(MAP_H-9-from.y)/dy);
+  t=camera_max(0,t);
+  return GPoint(from.x+(int)(dx*t),from.y+(int)(dy*t));
+}
 static void draw_map(Layer *layer,GContext *ctx) {
-  const HoleMap *map=&HOLE_MAPS[hole-1]; MapCamera camera=camera_for_hole(map);
+  const HoleMap *map=&HOLE_MAPS[hole-1]; bool near; MapCamera camera=camera_for_hole(map,&near);
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
-  // Layer fairway, dashed route, hazards, then green for a clear visual hierarchy.
-  for (int pass=0;pass<7;pass++) {
+  // Layer fairway, cutouts, tees, dashed route, hazards, then green for a clear visual hierarchy.
+  for (int pass=0;pass<6;pass++) {
     for (int i=0;i<map->count;i++) {
       const MapShape *shape=&MAP_SHAPES[map->start+i];
-      int order=shape->kind==5?0:shape->kind==7?1:shape->kind==4?2:shape->kind==6?3:shape->kind==0?4:shape->kind==1?6:5;
+      int order=shape->kind==4?0:shape->kind==6?1:shape->kind==5?2:shape->kind==0?3:shape->kind==1?5:4;
       if (order!=pass) continue;
       if (shape->kind==0) {
         for (int j=1;j<shape->count;j++) map_route(ctx,map_point(MAP_POINTS[shape->start+j-1],camera),map_point(MAP_POINTS[shape->start+j],camera));
@@ -372,43 +386,64 @@ static void draw_map(Layer *layer,GContext *ctx) {
       GPoint *points=malloc(shape->count*sizeof(GPoint));
       if (!points) continue;
       for (int j=0;j<shape->count;j++) points[j]=map_point(MAP_POINTS[shape->start+j],camera);
-      int clipped_count=0; GPoint *clipped=map_clip_polygon(points,shape->count,0,0,199,149,&clipped_count);
+      int clipped_count=0; GPoint *clipped=map_clip_polygon(points,shape->count,0,0,MAP_W-1,MAP_H-1,&clipped_count);
       free(points); points=clipped;
       if (!points || clipped_count<3) {free(points); continue;}
       GPathInfo info={.num_points=clipped_count,.points=points}; GPath *path=gpath_create(&info);
       if (path) {
-        GColor fill=shape->kind==7?GColorWhite:shape->kind==5 || shape->kind==6?GColorMintGreen:shape->kind==4?GColorMayGreen:shape->kind==2?GColorPastelYellow:shape->kind==3?GColorVividCerulean:GColorMintGreen;
+        GColor fill=shape->kind==6?GColorWhite:shape->kind==5?GColorIslamicGreen:shape->kind==4?GColorMayGreen:shape->kind==2?GColorPastelYellow:shape->kind==3?GColorVividCerulean:GColorMintGreen;
         GColor outline=shape->kind==2?GColorWindsorTan:shape->kind==3?GColorDukeBlue:GColorDarkGreen;
-        // A small neutral edge shadow separates features from the white ground.
-        if (shape->kind>=1 && shape->kind<=3) {
-          gpath_move_to(path,GPoint(2,2)); graphics_context_set_fill_color(ctx,GColorLightGray); gpath_draw_filled(ctx,path);
-          gpath_move_to(path,GPoint(0,0));
-        }
         graphics_context_set_fill_color(ctx,fill); gpath_draw_filled(ctx,path);
         if (shape->kind<=3) map_texture(ctx,points,clipped_count,shape->kind);
-        graphics_context_set_stroke_color(ctx,outline); graphics_context_set_stroke_width(ctx,shape->kind==4?1:2);
-        if (shape->kind<=4) gpath_draw_outline(ctx,path);
+        graphics_context_set_stroke_color(ctx,outline); graphics_context_set_stroke_width(ctx,shape->kind>=4?1:2);
+        if (shape->kind!=6) gpath_draw_outline(ctx,path);
         gpath_destroy(path);
       }
       free(points);
     }
   }
-  GPoint green=map_point(map->green,camera), tee_point=map_point(map->tee,camera);
-  // Labels identify targets without implying that the mapped middle is today's cup.
-  graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_circle(ctx,green,7);
-  graphics_context_set_stroke_color(ctx,GColorDarkGreen); graphics_context_set_stroke_width(ctx,2); graphics_draw_circle(ctx,green,7);
-  draw_text(ctx,"G",green.x-7,green.y-9,14,18,FONT_KEY_GOTHIC_14_BOLD,GColorDarkGreen);
-  if (map_visible(tee_point)) {
-    graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,GRect(tee_point.x-7,tee_point.y-8,14,16),2,GCornersAll);
-    graphics_context_set_stroke_color(ctx,GColorBlack); graphics_context_set_stroke_width(ctx,1); graphics_draw_round_rect(ctx,GRect(tee_point.x-7,tee_point.y-8,14,16),2);
-    draw_text(ctx,"T",tee_point.x-7,tee_point.y-9,14,18,FONT_KEY_GOTHIC_14_BOLD,GColorBlack);
+  GPoint green=map_point(map->green,camera), player=map_xy(map_x,map_y,camera), end=player;
+  bool live=usable(), shown=live && map_visible(player);
+  if (live) {
+    if (!shown) end=map_edge(green,player);
+    graphics_context_set_stroke_color(ctx,GColorCobaltBlue); graphics_context_set_stroke_width(ctx,2); graphics_draw_line(ctx,green,end);
+    GPoint layup=map_xy(layup_x,layup_y,camera);
+    if (layup_x>-1000 && map_visible(layup)) {
+      graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_circle(ctx,layup,4);
+      graphics_context_set_fill_color(ctx,GColorCobaltBlue); graphics_fill_circle(ctx,layup,3);
+    }
   }
-  GPoint player=map_xy(map_x,map_y,camera);
-  if (usable() && map_visible(player)) {
+  // A small mark leaves the green and nearby bunkers visible; it is the mapped middle, not today's cup.
+  graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_circle(ctx,green,3);
+  graphics_context_set_stroke_color(ctx,GColorDarkGreen); graphics_context_set_stroke_width(ctx,1); graphics_draw_circle(ctx,green,3);
+  if (!live) return;
+  int32_t angle=atan2_lookup(player.y-green.y,player.x-green.x);
+  int ux=cos_lookup(angle)*10/TRIG_MAX_RATIO, uy=sin_lookup(angle)*10/TRIG_MAX_RATIO;
+  // Label the line midway, or just inside an edge arrow; never over the green mark.
+  char distance[8]; snprintf(distance,sizeof(distance),"%d",middle);
+  GPoint mid=shown?GPoint((green.x+end.x)/2,(green.y+end.y)/2):GPoint(end.x-ux*24/10,end.y-uy*24/10);
+  if (abs(mid.x-green.x)<20 && abs(mid.y-green.y)<14) {
+    // Step sideways off the line, toward the middle of the map.
+    int side=(MAP_W/2-mid.x)*-uy+(MAP_H/2-mid.y)*ux<0?-1:1;
+    mid.x+=side*-uy*22/10; mid.y+=side*ux*22/10;
+  }
+  GRect box=GRect((int)camera_max(0,camera_min(MAP_W-30,mid.x-15)),(int)camera_max(0,camera_min(MAP_H-15,mid.y-7)),30,15);
+  graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,box,3,GCornersAll);
+  graphics_context_set_stroke_color(ctx,GColorCobaltBlue); graphics_context_set_stroke_width(ctx,1); graphics_draw_round_rect(ctx,box,3);
+  draw_text(ctx,distance,box.origin.x,box.origin.y-3,30,18,FONT_KEY_GOTHIC_14_BOLD,GColorCobaltBlue);
+  if (shown) {
     graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_circle(ctx,player,8);
     graphics_context_set_stroke_color(ctx,GColorBlack); graphics_context_set_stroke_width(ctx,1); graphics_draw_circle(ctx,player,7);
     graphics_context_set_fill_color(ctx,GColorMagenta); graphics_fill_circle(ctx,player,5);
     graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_circle(ctx,player,2);
+    return;
+  }
+  // Off-map player: an arrow at the edge points toward them.
+  GPoint arrow[3]={end,GPoint(end.x-ux-uy/2,end.y-uy+ux/2),GPoint(end.x-ux+uy/2,end.y-uy-ux/2)};
+  GPathInfo info={.num_points=3,.points=arrow}; GPath *path=gpath_create(&info);
+  if (path) {
+    graphics_context_set_fill_color(ctx,GColorMagenta); gpath_draw_filled(ctx,path);
+    graphics_context_set_stroke_color(ctx,GColorBlack); gpath_draw_outline(ctx,path); gpath_destroy(path);
   }
 }
 
@@ -527,11 +562,7 @@ static void draw(Layer *layer,GContext *ctx) {
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
   if (screen==SCREEN_PLAY && page==2) {
     draw_heading(ctx);
-    draw_text(ctx,hole_text,22,34,216,30,FONT_KEY_GOTHIC_24_BOLD,GColorDarkGreen);
-    char distance[32];
-    if (usable()) snprintf(distance,sizeof(distance),"%d %s TO GREEN",middle,units?"m":"yd");
-    else snprintf(distance,sizeof(distance),"HOLE OVERVIEW");
-    draw_text(ctx,distance,35,219,190,18,FONT_KEY_GOTHIC_14_BOLD,GColorDarkGreen);
+    draw_text(ctx,hole_text,22,36,216,22,FONT_KEY_GOTHIC_18_BOLD,GColorDarkGreen);
     draw_text(ctx,status_text,32,237,196,18,FONT_KEY_GOTHIC_14,status_color);
     return;
   }
@@ -567,7 +598,7 @@ static void draw(Layer *layer,GContext *ctx) {
 static void load(Window *w) {
   canvas=layer_create(layer_get_bounds(window_get_root_layer(w)));
   layer_set_update_proc(canvas,draw); layer_add_child(window_get_root_layer(w),canvas);
-  map_canvas=layer_create(GRect(30,70,200,150)); layer_set_update_proc(map_canvas,draw_map);
+  map_canvas=layer_create(GRect((260-MAP_W)/2,60,MAP_W,MAP_H)); layer_set_update_proc(map_canvas,draw_map);
   layer_add_child(canvas,map_canvas);
   hazard_canvas=layer_create(GRect(18,98,224,112)); layer_set_update_proc(hazard_canvas,draw_hazard_image);
   layer_add_child(canvas,hazard_canvas); render();

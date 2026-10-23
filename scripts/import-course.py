@@ -97,14 +97,25 @@ def landcover(key,value):
         for outer in rings['outer']:
             result.append((outer,[ring for ring in rings['inner'] if inside(ring[0],outer)]))
     return result
-course_ground=landcover('leisure','golf_course')
-for h in holes: h['fairways']=[]; h['fairwayCutouts']=[]
+for h in holes: h['fairways']=[]; h['fairwayCutouts']=[]; h['tees']=[]
 for ring,cutouts in landcover('golf','fairway'):
     c=centroid(ring)
     ranked=sorted((min(segment_distance(c,a,b) for a,b in zip(h['path'],h['path'][1:])),h['number']) for h in holes)
     if ranked[0][0]<=65:
         h=holes[ranked[0][1]-1]
         h['fairways'].append(ring); h['fairwayCutouts'].extend(cutouts)
+# OSM tee boxes carry no colour tags; assign each to the hole whose playing line,
+# extended 150 m behind its start, passes nearest. Selected tee colour is not mapped.
+def back_line(h):
+    (tx,ty),(nx,ny)=xy(h['tee']),xy(h['path'][1]); length=math.hypot(tx-nx,ty-ny)
+    bx,by=tx+(tx-nx)/length*150,ty+(ty-ny)/length*150
+    return [by/111195,bx/(111195*math.cos(math.radians(29.71)))],h['path'][1]
+for e in r.findall('way'):
+    if tags(e).get('golf')!='tee': continue
+    ring=points(e)
+    if ring[0]!=ring[-1]: continue
+    distance,number=min((segment_distance(centroid(ring),*back_line(h)),h['number']) for h in holes)
+    if distance<=25: holes[number-1]['tees'].append(ring)
 # Hole-up vector maps share their projection with the phone's position marker.
 map_points=[]; map_shapes=[]; map_holes=[]
 for h in holes:
@@ -113,7 +124,7 @@ for h in holes:
     ge,gn=local(h['center']); length=math.hypot(ge,gn); fe,fn=ge/length,gn/length
     def rotate(p):
         e,n=local(p); return (e*fn-n*fe,-(e*fe+n*fn))
-    shapes=[(0,h['path'],0)]+[(4,ring,0) for ring in h['fairways']]+[(6,ring,0) for ring in h['fairwayCutouts']]+[(1,h['green'],0)]+[(2 if f['kind']=='BUNKER' else 3,f['polygon'],int(f['osmId'])) for f in h['hazards']]
+    shapes=[(0,h['path'],0)]+[(4,ring,0) for ring in h['fairways']]+[(6,ring,0) for ring in h['fairwayCutouts']]+[(5,ring,0) for ring in h['tees']]+[(1,h['green'],0)]+[(2 if f['kind']=='BUNKER' else 3,f['polygon'],int(f['osmId'])) for f in h['hazards']]
     all_points=[rotate(p) for _,ring,_ in shapes for p in ring]
     minx,miny=min(p[0] for p in all_points)-10,min(p[1] for p in all_points)-10
     maxx,maxy=max(p[0] for p in all_points)+10,max(p[1] for p in all_points)+10
@@ -122,7 +133,6 @@ for h in holes:
     h['map']=dict(origin=origin,eastScale=scale*cos,northScale=scale,forward=[fe,fn],zoom=zoom,offset=[offsetx,offsety])
     def pixel(p):
         x,y=rotate(p); return [round((x*zoom+offsetx)*16),round((y*zoom+offsety)*16)]
-    shapes=[(5,ring,0) for ring,cutouts in course_ground]+[(7,ring,0) for outer,cutouts in course_ground for ring in cutouts]+shapes
     shape_start=len(map_shapes)
     for kind,ring,osm_id in shapes:
         start=len(map_points); map_points.extend(pixel(p) for p in ring)
@@ -136,7 +146,7 @@ header=['// Generated OSM vector geometry; see README for attribution.',
         'static const HoleMap HOLE_MAPS[18] = {'+','.join('{'+str(a)+','+str(b)+',{'+','.join(map(str,t))+'},{'+','.join(map(str,g))+'}}' for a,b,t,g in map_holes)+'};']
 (ROOT/'src/c/map.h').write_text('\n'.join(header)+'\n')
 # Fairways are drawn from map.h only; keep them out of the phone bundle.
-for h in holes: del h['fairways'], h['fairwayCutouts']
+for h in holes: del h['fairways'], h['fairwayCutouts'], h['tees']
 course=dict(id='sharpstown-park',name='Sharpstown Park Golf Course',city='Houston, TX',source='© OpenStreetMap contributors',license='ODbL-1.0',sourceUrl='https://www.openstreetmap.org/relation/1705949',snapshotTimestamp=r.find('meta').get('osm_base') if r.find('meta') is not None else '2026-10-23',target='Derived green centroid; not daily cup position',holes=holes)
 (ROOT/'src/pkjs/course.json').write_text(json.dumps(course,indent=2)+'\n')
 print(f"Imported {len(holes)} holes / {len(greens)} greens, par {sum(h['par'] for h in holes)}")

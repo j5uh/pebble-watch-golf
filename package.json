@@ -38,7 +38,9 @@
       "FixTime",
       "MapX",
       "MapY",
-      "GreenEdges"
+      "GreenEdges",
+      "LayupX",
+      "LayupY"
     ],
     "resources": {
       "media": []
