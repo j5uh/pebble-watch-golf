@@ -29,8 +29,9 @@ for (const row of yards.Hazards.split('|')) {const fields=row.split(',');assert.
 h.request({Units:1,Revision:3});let meters=h.last();assert.ok(Math.abs(meters.Center-yards.Center*0.9144)<1);
 assert.equal(meters.Revision,3);assert.equal(meters.LayupTarget,100);
 h.request({Hole:18,Revision:4});assert.equal(h.last().Hole,18);
-h.advance(5000);assert.equal(h.last().FixAge,5,'heartbeat preserves actual fix age');
-h.request({Request:1,Revision:5});h.requests[1].err({code:1});assert.equal(h.last().GpsState,2);assert.equal(h.last().Center,undefined);
+let sent=h.messages.length;h.advance(5000);assert.equal(h.messages.length,sent,'heartbeat skips unchanged fix');
+h.request({Revision:5});assert.equal(h.last().FixAge,5,'reply preserves actual fix age');assert.equal(h.messages.length,sent+1,'one reply per request');
+h.request({Request:1,Revision:5});h.requests.at(-1).err({code:1});assert.equal(h.last().GpsState,2);assert.equal(h.last().Center,undefined);
 let count=h.requests.length;h.advance(60000);h.request({Request:0,Revision:5});assert.equal(h.requests.length,count,'no automatic permission retry');
 h.request({Request:1,Revision:6});assert.equal(h.requests.length,count+1);h.requests.at(-1).ok(h.fix());assert.ok(h.last().Center>0);
 // A silent geolocation provider times out and recovers automatically.

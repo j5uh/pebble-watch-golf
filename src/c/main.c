@@ -295,7 +295,8 @@ static MapCamera camera_for_hole(const HoleMap *map) {
 // Clip geometry before rasterizing; distant polygon vertices can otherwise make
 // a tiny local view spend time drawing thousands of off-screen scanlines.
 static GPoint *map_clip_polygon(const GPoint *input,int count,int left,int top,int right,int bottom,int *out_count) {
-  *out_count=0; int capacity=count*16+16;
+  // Each pass grows a concave polygon by at most 1.5x: 1.5^4 < 6.
+  *out_count=0; int capacity=count*6+16;
   GPoint *a=malloc(capacity*sizeof(GPoint)),*b=malloc(capacity*sizeof(GPoint));
   if (!a || !b) {free(a); free(b); return NULL;}
   memcpy(a,input,count*sizeof(GPoint)); int n=count;
@@ -581,7 +582,7 @@ int main(void) {
   phone_connected=connection_service_peek_pebble_app_connection();
   window=window_create(); window_set_background_color(window,GColorWhite);
   window_set_window_handlers(window,(WindowHandlers){.load=load,.unload=unload}); window_set_click_config_provider(window,clicks);
-  app_message_register_inbox_received(inbox); app_message_register_outbox_failed(failed); app_message_open(2048,256);
+  app_message_register_inbox_received(inbox); app_message_register_outbox_failed(failed); app_message_open(1024,256);
   tick_timer_service_subscribe(SECOND_UNIT,tick);
   connection_service_subscribe((ConnectionHandlers){.pebble_app_connection_handler=connection});
   about=window_create(); credits=text_layer_create(GRect(30,45,200,180));

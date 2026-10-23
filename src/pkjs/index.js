@@ -2,7 +2,7 @@ var course = require('./course.json');
 var geo = require('./distance');
 var hole=1, units=0, target=100, revision=0;
 var fix=null, watchId=null, active=false, permissionDenied=false;
-var pending=null, sending=false, retryTimer=null, failures=0;
+var pending=null, sending=false, retryTimer=null, failures=0, lastKey='';
 var state=1, refreshing=false, requestToken=0, refreshTimer=null, lastAttempt=0, lastWatchRestart=0;
 var options={enableHighAccuracy:true,maximumAge:0,timeout:15000};
 var MAX_AGE=30000;
@@ -13,14 +13,22 @@ function flush() {
   Pebble.sendAppMessage(payload,function() {
     sending=false; failures=0; flush();
   },function() {
-    sending=false;
+    sending=false; lastKey='';
     // Never retry a response for a hole/settings revision the user has left.
     if (!pending && (payload.Ready || payload.Revision===revision)) pending=payload;
     failures++;
     retryTimer=setTimeout(function() {retryTimer=null; if (active) publish(); else flush();},Math.min(10000,1000*Math.pow(2,Math.min(3,failures-1))));
   });
 }
-function send(p) {pending=p; flush();}
+// Skip repeats of the last queued payload; FixAge alone changes every heartbeat
+// and the watch ages fixes locally from FixTime.
+function send(p) {
+  var copy={},key;
+  for (key in p) if (key!=='FixAge') copy[key]=p[key];
+  key=JSON.stringify(copy);
+  if (key===lastKey) return;
+  lastKey=key; pending=p; flush();
+}
 function fixAge() {return fix ? Math.max(0,Date.now()-fix.timestamp) : Infinity;}
 function mapPoint(position,m) {
   var east=(position[1]-m.origin[1])*m.eastScale,north=(position[0]-m.origin[0])*m.northScale;
@@ -38,9 +46,7 @@ function publish() {
     p.Back=d.back===null?-1:Math.round(d.back*factor);
     p.GreenEdges=d.frontPoint && d.backPoint?mapPoint(d.frontPoint,h.map).concat(mapPoint(d.backPoint,h.map)).join(','):'';
     p.Accuracy=Math.round(fix.coords.accuracy); p.FixAge=Math.floor(fixAge()/1000); p.FixTime=Math.floor(fix.timestamp/1000);
-    var m=h.map, east=(position[1]-m.origin[1])*m.eastScale, north=(position[0]-m.origin[0])*m.northScale;
-    p.MapX=Math.round((east*m.forward[1]-north*m.forward[0])*m.zoom*16+m.offset[0]*16);
-    p.MapY=Math.round(-(east*m.forward[0]+north*m.forward[1])*m.zoom*16+m.offset[1]*16);
+    var player=mapPoint(position,h.map); p.MapX=player[0]; p.MapY=player[1];
     p.Par=h.par; p.LayupShot=l?Math.round(l.shot*factor):-1;
     p.Hazards=geo.hazardDistances(position,h,true).slice(0,8).map(function(x) {
       var near=mapPoint(x.reachPoint,h.map),far=mapPoint(x.carryPoint,h.map);

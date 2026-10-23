@@ -135,6 +135,8 @@ header=['// Generated OSM vector geometry; see README for attribution.',
         'static const MapShape MAP_SHAPES[] = {'+','.join('{'+','.join(map(str,s))+'}' for s in map_shapes)+'};',
         'static const HoleMap HOLE_MAPS[18] = {'+','.join('{'+str(a)+','+str(b)+',{'+','.join(map(str,t))+'},{'+','.join(map(str,g))+'}}' for a,b,t,g in map_holes)+'};']
 (ROOT/'src/c/map.h').write_text('\n'.join(header)+'\n')
+# Fairways are drawn from map.h only; keep them out of the phone bundle.
+for h in holes: del h['fairways'], h['fairwayCutouts']
 course=dict(id='sharpstown-park',name='Sharpstown Park Golf Course',city='Houston, TX',source='© OpenStreetMap contributors',license='ODbL-1.0',sourceUrl='https://www.openstreetmap.org/relation/1705949',snapshotTimestamp=r.find('meta').get('osm_base') if r.find('meta') is not None else '2026-10-23',target='Derived green centroid; not daily cup position',holes=holes)
 (ROOT/'src/pkjs/course.json').write_text(json.dumps(course,indent=2)+'\n')
 print(f"Imported {len(holes)} holes / {len(greens)} greens, par {sum(h['par'] for h in holes)}")
