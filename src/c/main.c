@@ -421,7 +421,7 @@ static void draw_map(Layer *layer,GContext *ctx) {
   int ux=cos_lookup(angle)*10/TRIG_MAX_RATIO, uy=sin_lookup(angle)*10/TRIG_MAX_RATIO;
   // Label the line midway, or just inside an edge arrow; never over the green mark.
   char distance[8]; snprintf(distance,sizeof(distance),"%d",middle);
-  GPoint mid=shown?GPoint((green.x+end.x)/2,(green.y+end.y)/2):GPoint(end.x-ux*24/10,end.y-uy*24/10);
+  GPoint mid=shown?GPoint((green.x+end.x)/2,(green.y+end.y)/2):GPoint(end.x-ux*44/10,end.y-uy*44/10);
   if (abs(mid.x-green.x)<20 && abs(mid.y-green.y)<14) {
     // Step sideways off the line, toward the middle of the map.
     int side=(MAP_W/2-mid.x)*-uy+(MAP_H/2-mid.y)*ux<0?-1:1;
@@ -445,6 +445,11 @@ static void draw_map(Layer *layer,GContext *ctx) {
     graphics_context_set_fill_color(ctx,GColorMagenta); gpath_draw_filled(ctx,path);
     graphics_context_set_stroke_color(ctx,GColorBlack); gpath_draw_outline(ctx,path); gpath_destroy(path);
   }
+  // Name the arrow so it reads as the player, not a direction cue.
+  GPoint you=GPoint(end.x-ux*18/10,end.y-uy*18/10);
+  GRect tag=GRect((int)camera_max(0,camera_min(MAP_W-24,you.x-12)),(int)camera_max(0,camera_min(MAP_H-14,you.y-7)),24,14);
+  graphics_context_set_fill_color(ctx,GColorMagenta); graphics_fill_rect(ctx,tag,3,GCornersAll);
+  draw_text(ctx,"YOU",tag.origin.x,tag.origin.y-3,24,16,FONT_KEY_GOTHIC_14_BOLD,GColorWhite);
 }
 
 static GPoint hazard_preview_point(GPoint p,float scale,float cx,float cy) {
