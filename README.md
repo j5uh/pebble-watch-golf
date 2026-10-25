@@ -1,14 +1,15 @@
 # Pebble Golf
 
-Native C rangefinder for **Pebble Round 2 (`gabbro`)**, starting with **Sharpstown Park Golf Course, Houston**. Version 0.2.0.
+Native C rangefinder for **Pebble Round 2 (`gabbro`)**, with **Sharpstown Park Golf Course, Houston** built in and more courses downloaded on demand. Version 0.2.0.
 
 ## Playing a round
 
-1. Choose **Blue, White, Gold, or Red tees** using Up/Down. Select starts a new round on hole 1. The previous tee is preselected. Total course length updates immediately for the chosen tee: Blue 6,602, White 6,292, Gold 5,925, Red 5,147 yards (converted when meters are selected).
-2. **Up / Down** always select the previous / next hole during play. Selection is manual and wraps through all 18 holes.
-3. **Select** cycles through Green + Layup → all-hazards overview → Map → Green.
-4. **Hold Select** for settings: refresh GPS, change tee, preferred layup approach distance, yards/meters, new round, credits, and return to play.
-5. In settings use Up/Down to browse, Select to open/confirm, Back to cancel/return. Changing tees during a round preserves the current hole.
+1. Choose a course. The phone lists up to five courses, nearest first once it has a GPS position (otherwise the last course played leads). Selecting one downloads it to the phone if needed; it is kept there for offline play.
+2. Choose a tee using Up/Down; names and total lengths come from the course. Select starts a new round on hole 1. Back returns to the course list.
+3. **Up / Down** always select the previous / next hole during play. Selection is manual and wraps through all 18 holes.
+4. **Select** cycles through Green + Layup → all-hazards overview → Map → Green.
+5. **Hold Select** for settings: refresh GPS, change tee, preferred layup approach distance, yards/meters, new round, credits, and return to play.
+6. In settings use Up/Down to browse, Select to open/confirm, Back to cancel/return. Changing tees during a round preserves the current hole.
 
 The green screen shows **front, middle, and back together**, with a large middle distance, hole/par, selected tee, units, GPS accuracy, and reading age. Tee selection records round context; live distances are always measured from your current phone location.
 
@@ -18,11 +19,11 @@ The map view draws bundled OpenStreetMap geometry directly on the watch: availab
 
 The map uses dark feature outlines, light edge shadows, striped greens, dotted sand, wave-patterned blue water, a dashed playing line, and a high-contrast magenta player ring with a white halo. These are visual styling cues, not elevation or terrain shading.
 
-This is a vector course overview, not aerial or satellite imagery. `src/c/map.h` is generated with the phone's matching projection metadata by `scripts/import-course.py`. The simulator currently uses our labeled fake-GPS feed.
+This is a vector course overview, not aerial or satellite imagery. Each hole's map (`mapHex`) is generated with the phone's matching projection metadata by `scripts/import-course.py`; the phone sends the watch only the current hole's map. The simulator currently uses our labeled fake-GPS feed.
 
 ## Hazard distances
 
-The bundled OSM snapshot contains **20 bunker polygons and four water polygons**. The importer associates bunkers with the nearest mapped hole path (within 65 m); water can be associated with multiple bordering holes within 50 m. Associations are inspectable in `data/hazard-associations.json` and the audit image `data/hazard-map-audit.png`.
+The bundled OSM snapshot contains **20 bunker polygons and four water polygons**. The importer associates bunkers with the nearest mapped hole path (within 65 m); water can be associated with multiple bordering holes within 50 m. Associations are inspectable in `data/courses/sharpstown-park/hazard-associations.json` and the audit image `data/courses/sharpstown-park/hazard-map-audit.png`.
 
 For the selected hole, one overview shows the green and all mapped bunker/water polygons together, with compact **R** (reach) and **C** (carry) distance callouts on the sides. Thin leader lines terminate at the corresponding near/far boundary crossings. Reach/carry label order adjusts to prevent each pair from crossing, and numbers sit two pixels from the line ends. A compact Front / Middle / Back row above the map keeps green yardages visible on the same screen. Dark-green F/M/B callouts and non-crossing leader lines mark the exact front edge, green centroid, and back edge used by those measurements. Missing front/back intersections show -- without edge leaders. Labels are distributed vertically to avoid collisions; the legend shows the current units. Select opens Layup directly instead of stepping through individual hazard cards.
 
@@ -54,7 +55,7 @@ Carry the paired phone with you. The watch has no independent GPS; leaving the p
 - Measurements are hidden after 30 seconds. Hole/settings revisions reject out-of-date responses.
 - Permission denial stops automatic location retries; use **Settings → Refresh GPS** after changing permission.
 
-Course data is bundled with the phone JavaScript; no course API or cellular data is needed during play. A working watch–phone connection and phone location service are still required. Real mobile background behavior, accuracy, and battery usage need testing on a paired phone during a round.
+Sharpstown is bundled with the phone JavaScript; other courses are downloaded once when chosen and kept on the phone, so no cellular data is needed during play. A working watch–phone connection and phone location service are still required. Real mobile background behavior, accuracy, and battery usage need testing on a paired phone during a round.
 
 ## Build and checks
 
@@ -90,13 +91,17 @@ Course data **© OpenStreetMap contributors**, available under the [Open Databas
 
 - Course: https://www.openstreetmap.org/relation/1705949 (mapped as Sharpstown Country Club).
 - OSM snapshot downloaded 2026-10-23: `https://api.openstreetmap.org/api/0.6/map?bbox=-95.536,29.705,-95.523,29.716`.
-- `data/sharpstown.osm`: original map extract, including surrounding features.
-- `src/pkjs/course.json`: derived greens, hole paths, hazards, and original OSM IDs.
-- `src/c/course.h`: generated watch-side pars.
+- `data/courses/sharpstown-park/course.osm`: original map extract, including surrounding features.
+- `src/pkjs/course.json` and `courses/<id>.json`: derived greens, hole paths, hazards, watch maps, and original OSM IDs.
 - `scripts/import-course.py`: reproducible conversion; requires all 18 hole endpoints to match unique green polygons.
-- Tee names follow the [official Sharpstown scorecard](https://www.memorialparkgolf.com/copy-of-sharpstown-park-golf-course); total course lengths come from the [USGA course rating database](https://ncrdb.usga.org/courseTeeInfo?CourseID=20651), recorded in `data/tees.json`.
+- Tee names follow the [official Sharpstown scorecard](https://www.memorialparkgolf.com/copy-of-sharpstown-park-golf-course); total course lengths come from the [USGA course rating database](https://ncrdb.usga.org/courseTeeInfo?CourseID=20651), recorded in `data/courses/sharpstown-park/tees.json`.
+- Memorial Park (https://www.openstreetmap.org/relation/13729803): Overpass extract of golf features within the course area, 2026-10-24. Tee yardages from the [GolfPass scorecard](https://www.golfpass.com/courses/3037-memorial-park-golf-course/scorecard-and-layout), not yet verified with the course.
 
 Green middles are derived polygon centroids. Front/back are crossings on the line from the player through the middle. These are **green distances, not today's cup location**. Neither automatic hole detection nor pin placement is implemented.
+
+## Open course data and license
+
+The course files are an open dataset for any app. GeoJSON and JSON downloads, field docs, and how to add a course are in [data/README.md](data/README.md). Code is [MIT](LICENSE); course data is [ODbL 1.0](data/LICENSE.md), © OpenStreetMap contributors.
 
 ## Developer references
 

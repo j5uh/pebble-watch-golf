@@ -1,0 +1,16 @@
+{
+  "course": "Memorial Park Golf Course",
+  "short": "MEMORIAL",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/13729803",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/3037-memorial-park-golf-course/scorecard-and-layout",
+  "verifiedDate": "2026-10-24",
+  "tees": [
+    {"name": "BLUE", "totalYards": 7292},
+    {"name": "WHITE", "totalYards": 6553},
+    {"name": "GOLD", "totalYards": 5905},
+    {"name": "GREEN", "totalYards": 5399},
+    {"name": "RED", "totalYards": 4826}
+  ]
+}

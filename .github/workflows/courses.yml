@@ -1,0 +1,22 @@
+# Rebuild course files from data/courses/ and publish courses/ to GitHub Pages.
+name: Publish courses
+on:
+  push:
+    branches: [main]
+    paths: [data/**, scripts/import-course.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/import-course.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: courses
+      - uses: actions/deploy-pages@v4

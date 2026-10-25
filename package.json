@@ -40,7 +40,11 @@
       "MapY",
       "GreenEdges",
       "LayupX",
-      "LayupY"
+      "LayupY",
+      "Course",
+      "CourseList",
+      "CourseInfo",
+      "MapData"
     ],
     "resources": {
       "media": []

@@ -1,5 +1,9 @@
 {
   "course": "Sharpstown Park Golf Course",
+  "short": "SHARPSTOWN",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/1705949",
+  "builtIn": true,
   "source": "USGA National Course Rating Database",
   "sourceUrl": "https://ncrdb.usga.org/courseTeeInfo?CourseID=20651",
   "verifiedDate": "2026-10-23",
