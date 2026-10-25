@@ -1,0 +1,16 @@
+{
+  "course": "Wildcat Golf Club - Highlands",
+  "short": "WILDCAT HL",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/913325504",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/16407-wildcat-golf-club-the-highlands/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "BLACK", "totalYards": 6954},
+    {"name": "GOLD", "totalYards": 6549},
+    {"name": "BLUE", "totalYards": 6116},
+    {"name": "WHITE", "totalYards": 5617},
+    {"name": "GREEN", "totalYards": 5005}
+  ]
+}

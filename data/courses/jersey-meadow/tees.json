@@ -1,0 +1,15 @@
+{
+  "course": "Jersey Meadow Golf Course",
+  "short": "JERSEY MDW",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/126449831",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/3013-jersey-meadow-golf-course/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "BLACK", "totalYards": 6671},
+    {"name": "BLUE", "totalYards": 6277},
+    {"name": "WHITE", "totalYards": 5640},
+    {"name": "GREEN", "totalYards": 4931}
+  ]
+}

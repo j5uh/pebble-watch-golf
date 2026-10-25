@@ -1,0 +1,14 @@
+{
+  "course": "Tour 18 Houston",
+  "short": "TOUR 18",
+  "city": "Humble, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/11814661",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/15072-tour-18-houston/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "GOLD", "totalYards": 6782},
+    {"name": "BLUE", "totalYards": 6302},
+    {"name": "WHITE", "totalYards": 5380}
+  ]
+}

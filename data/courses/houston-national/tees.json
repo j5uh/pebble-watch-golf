@@ -1,0 +1,15 @@
+{
+  "course": "Houston National Golf Club",
+  "short": "HOU NATL",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/4445263",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/22721-houston-national-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "NATIONAL", "totalYards": 7337},
+    {"name": "BLUE", "totalYards": 6793},
+    {"name": "WHITE", "totalYards": 6265},
+    {"name": "RED", "totalYards": 5563}
+  ]
+}

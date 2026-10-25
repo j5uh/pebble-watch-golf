@@ -1,0 +1,15 @@
+{
+  "course": "Hermann Park Golf Course",
+  "short": "HERMANN",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/43035413",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/3031-hermann-park-golf-course/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "GOLD", "totalYards": 6015},
+    {"name": "BLUE", "totalYards": 5394},
+    {"name": "WHITE", "totalYards": 4777},
+    {"name": "RED", "totalYards": 4563}
+  ]
+}
