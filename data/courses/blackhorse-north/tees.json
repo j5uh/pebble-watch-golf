@@ -1,0 +1,18 @@
+{
+  "course": "BlackHorse Golf Club - North Course",
+  "short": "BH NORTH",
+  "city": "Cypress, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6531137",
+  "osmCourse": "North Course",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/courses/21750-blackhorse-golf-club-north-course/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "BIG JAKE", "totalYards": 7301},
+    {"name": "BLACK", "totalYards": 7075},
+    {"name": "BLUE", "totalYards": 6615},
+    {"name": "WHITE", "totalYards": 6199},
+    {"name": "RED", "totalYards": 5640},
+    {"name": "GREEN", "totalYards": 5065}
+  ]
+}

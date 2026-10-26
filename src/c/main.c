@@ -28,7 +28,7 @@ static Layer *canvas, *map_canvas, *hazard_canvas;
 static const char *main_font=FONT_KEY_GOTHIC_28_BOLD;
 static GColor status_color;
 static Screen screen=SCREEN_COURSES;
-static int hole=1, units=0, tee=1, target=100, revision=1, page=0, hazard_index=0, menu_index=0;
+static int hole=1, hole_count=18, units=0, tee=1, target=100, revision=1, page=0, hazard_index=0, menu_index=0;
 static int middle=-1, front=-1, back=-1, accuracy=0, age_at_receive=0, gps_state=1, layup_shot=-1;
 static Hazard hazards[MAX_HAZARDS];
 static int hazard_count=0, map_x=-1000, map_y=-1000, layup_x=-1000, layup_y=-1000;
@@ -82,10 +82,10 @@ static void render(void) {
     snprintf(main_text,sizeof(main_text),"%s",tee_names[tee]);
     snprintf(caption_text,sizeof(caption_text),round_started?"SELECT TO CONFIRM":"SELECT TO START ROUND");
     int total=units?(tee_yards[tee]*9144+5000)/10000:tee_yards[tee], par=0;
-    for (int i=0;i<18;i++) par+=pars[i]-'0';
+    for (int i=0;i<hole_count;i++) par+=pars[i]-'0';
     snprintf(left_text,sizeof(left_text),"%d,%03d",total/1000,total%1000);
     snprintf(left_cap,sizeof(left_cap),"TOTAL %s",unit);
-    snprintf(right_text,sizeof(right_text),"%d",par); snprintf(right_cap,sizeof(right_cap),"PAR / 18 HOLES");
+    snprintf(right_text,sizeof(right_text),"%d",par); snprintf(right_cap,sizeof(right_cap),"PAR / %d HOLES",hole_count);
     snprintf(status_text,sizeof(status_text),"HOLD SELECT: SETTINGS");
   } else if (screen==SCREEN_TARGET) {
     snprintf(hole_text,sizeof(hole_text),"LAYUP PREFERENCE");
@@ -202,10 +202,10 @@ static void parse_hazards(const char *text) {
 static bool parse_info(const char *text) {
   char buffer[160]; snprintf(buffer,sizeof(buffer),"%s",text);
   char *bar=strchr(buffer,'|'), *bar2=bar?strchr(bar+1,'|'):NULL;
-  if (!bar2 || bar2-bar-1!=18) return false;
-  *bar=*bar2='\0';
+  if (!bar2 || (bar2-bar-1!=9 && bar2-bar-1!=18)) return false;
+  hole_count=bar2-bar-1; *bar=*bar2='\0';
   snprintf(course_short,sizeof(course_short),"%.11s",buffer);
-  memcpy(pars,bar+1,18); pars[18]='\0';
+  memcpy(pars,bar+1,hole_count); pars[hole_count]='\0';
   tee_count=0;
   for (char *row=bar2+1;row && *row && tee_count<MAX_TEES;) {
     char *next=strchr(row,','); if (next) *next++='\0';
@@ -301,7 +301,7 @@ static void change(int delta) {
   else if (screen==SCREEN_TEES) {if (tee_count) tee=(tee+delta+tee_count)%tee_count;}
   else if (screen==SCREEN_TARGET) {target+=delta*25; if (target<50) target=200; if (target>200) target=50;}
   else if (screen==SCREEN_MENU) menu_index=(menu_index+delta+7)%7;
-  else {hole=(hole-1+delta+18)%18+1; persist_write_int(1,hole); invalidate(); request(false);}
+  else {hole=(hole-1+delta+hole_count)%hole_count+1; persist_write_int(1,hole); invalidate(); request(false);}
   render();
 }
 static void up(ClickRecognizerRef r,void *c) {change(-1);}
@@ -753,6 +753,7 @@ int main(void) {
   // Reopening after an accidental Back resumes the round on the saved hole.
   char info[160];
   if (persist_read_string(6,course_id,sizeof(course_id))>0 && persist_read_string(7,info,sizeof(info))>0) course_ready=parse_info(info);
+  if (hole>hole_count) hole=1;
   round_started=persist_read_bool(5) && course_ready;
   if (round_started) screen=SCREEN_PLAY; else {course_id[0]='\0'; course_ready=false;}
   phone_connected=connection_service_peek_pebble_app_connection();

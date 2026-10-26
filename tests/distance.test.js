@@ -18,7 +18,7 @@ for (const h of all.flatMap(c=>c.holes)) {
   const d = geo.yardages(h.tee,h);
   assert.ok(d.front > 0 && d.front < d.center && d.center < d.back, `hole ${h.number}: valid crossings`);
 }
-console.log('Distance calculations and all 18 holes on every course passed.');
+console.log('Distance calculations and every hole on every course passed.');
 const hazard={osmId:'test',kind:'WATER',center:[0,0],polygon:square.green};
 const ahead={center:[0,0.005],hazards:[hazard]};
 const hazardResult=geo.hazardDistances([0,-0.003],ahead)[0];

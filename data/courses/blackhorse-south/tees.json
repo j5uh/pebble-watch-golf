@@ -1,0 +1,19 @@
+{
+  "course": "BlackHorse Golf Club - South Course",
+  "short": "BH SOUTH",
+  "city": "Cypress, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6531137",
+  "snapshot": "blackhorse-north",
+  "osmCourse": "South Course",
+  "source": "GolfPass scorecard hole-by-hole totals (not yet checked against the course tee sheet or USGA); Combo tees omitted",
+  "sourceUrl": "https://www.golfpass.com/courses/21751-blackhorse-golf-club-south-course/scorecard-and-layout",
+  "verifiedDate": "2026-10-25",
+  "tees": [
+    {"name": "BIG JAKE", "totalYards": 7191},
+    {"name": "BLACK", "totalYards": 6958},
+    {"name": "BLUE", "totalYards": 6434},
+    {"name": "WHITE", "totalYards": 6084},
+    {"name": "RED", "totalYards": 5473},
+    {"name": "GREEN", "totalYards": 4839}
+  ]
+}

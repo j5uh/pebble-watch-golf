@@ -116,4 +116,9 @@ acks.shift()(); // ACK 16 and send the final request for 15.
 assert.equal(race.last().Hole,15);assert.equal(race.last().Revision,17);
 assert.deepEqual(Array.from(race.last().MapData),[...Buffer.from(course.holes[14].mapHex,"hex")],"returning to 15 resends its map");
 assert.deepEqual(Array.from(race.last().MapData),[...Buffer.from(course.holes[14].mapHex,'hex')]);
-console.log('Phone tests passed: course cache versions and fallback, delayed map ACKs, GPS recovery, permissions, revisions and delivery retry.');
+// A 9-hole course is usable; its course info carries 9 pars and a stale hole 14 falls back to the last hole.
+const nine={...memorial,id:'nine',holes:memorial.holes.slice(0,9)};
+const n=harness();n.handlers.ready();n.request({Course:'nine',Hole:14});n.xhrs.at(-1).reply(200,nine);
+assert.ok(n.last().CourseInfo.startsWith('MEMORIAL|'+nine.holes.map(h=>h.par).join('')+'|'));
+assert.deepEqual(Array.from(n.last().MapData),[...Buffer.from(nine.holes[8].mapHex,'hex')]);
+console.log('Phone tests passed: 9-hole courses, course cache versions and fallback, delayed map ACKs, GPS recovery, permissions, revisions and delivery retry.');

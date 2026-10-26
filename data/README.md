@@ -25,7 +25,7 @@ GeoJSON features carry a `golf` property:
 
 ## What's checked, and what isn't
 
-Checked on every build: 18 numbered holes with par, each hole ending in exactly one green,
+Checked on every build: 9 or 18 numbered holes with par, each hole ending in exactly one green,
 no green shared, tee metadata present.
 
 Not checked: bunker, water, fairway, and tee boxes are matched to holes by distance to the
@@ -58,6 +58,9 @@ data/courses/<id>/
 3. Write `data/courses/<id>/tees.json`, copying an existing one. `short` is 10 capitals or
    fewer; tee names are capitals, up to 8 letters. Record where the yardages came from in
    `source`, `sourceUrl`, and `verifiedDate`.
+   For a 27- or 36-hole site, make one folder per course: set `osmCourse` to the holes'
+   `golf:course:name`, and in the other folders set `snapshot` to the folder holding the
+   shared `course.osm` (see `blackhorse-north` and `blackhorse-south`).
 4. Run `python3 scripts/import-course.py`. Fix any assertion it raises (usually in OSM).
 5. Open `courses/<id>.geojson` in geojson.io and check the holes and hazards look right,
    then open a pull request.

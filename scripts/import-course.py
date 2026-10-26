@@ -13,7 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MAX_POINTS, MAX_SHAPES = 800, 32
 
 def build(folder):
-    r = ET.parse(folder / 'course.osm').getroot()
+    meta=json.loads((folder/'tees.json').read_text())
+    # A multi-course site shares one snapshot; osmCourse picks holes by golf:course:name.
+    r = ET.parse(ROOT/'data/courses'/meta.get('snapshot',folder.name)/'course.osm').getroot()
     nodes = {e.get('id'): [float(e.get('lat')), float(e.get('lon'))] for e in r.findall('node')}
     lat0 = round(sum(p[0] for p in nodes.values())/len(nodes), 2)
     def tags(e): return {t.get('k'): t.get('v') for t in e.findall('tag')}
@@ -34,18 +36,20 @@ def build(folder):
             cross=x*v-u*y; area+=cross; cx+=(x+u)*cross; cy+=(y+v)*cross
         return [round(oy+cy/(3*area),7),round(ox+cx/(3*area),7)]
     greens=[e for e in r.findall('way') if tags(e).get('golf')=='green']
-    holes=[]
+    holes=[]; others=[]
     for e in r.findall('way'):
         t=tags(e)
         if t.get('golf') != 'hole': continue
         path=points(e)
+        if meta.get('osmCourse') and t.get('golf:course:name')!=meta['osmCourse']:
+            others.append(dict(number=None,path=path,tee=path[0])); continue
         matches=[g for g in greens if inside(path[-1],points(g))]
         assert len(matches)==1, f"{folder.name} hole {t['ref']}: expected one containing green, got {len(matches)}"
         g=matches[0]; ring=points(g)
         holes.append(dict(number=int(t['ref']),par=int(t['par']),osmHoleId=e.get('id'),osmGreenId=g.get('id'),center=centroid(ring),green=ring,tee=path[0],path=path))
     holes.sort(key=lambda h:h['number'])
-    assert [h['number'] for h in holes]==list(range(1,19)), f"{folder.name}: expected holes 1-18"
-    assert len({h['osmGreenId'] for h in holes})==18
+    assert [h['number'] for h in holes] in (list(range(1,10)),list(range(1,19))), f"{folder.name}: expected holes 1-9 or 1-18"
+    assert len({h['osmGreenId'] for h in holes})==len(holes)
     # Associate each bunker to its nearest hole path. Water may border several holes.
     # Distances use a local metric projection; keep associations reproducible and inspectable.
     def xy(p): return (p[1]*111195*math.cos(math.radians(lat0)), p[0]*111195)
@@ -64,13 +68,13 @@ def build(folder):
         ring=points(e)
         assert ring[0]==ring[-1], f"Hazard {e.get('id')} is not a closed polygon"
         kind='BUNKER' if t['golf']=='bunker' else 'WATER'
-        ranked=sorted((path_distance(ring,h),h['number']) for h in holes)
-        assigned=[number for d,number in ranked if d<=50] if kind=='WATER' else [ranked[0][1]] if ranked[0][0]<=65 else []
+        ranked=sorted(((path_distance(ring,h),h['number']) for h in holes+others),key=lambda x:x[0])
+        assigned=[number for d,number in ranked if d<=50 and number] if kind=='WATER' else [ranked[0][1]] if ranked[0][0]<=65 and ranked[0][1] else []
         feature=dict(osmId=e.get('id'),kind=kind,center=centroid(ring),polygon=ring)
         features.append(dict(feature,holes=assigned))
         for n in assigned: holes[n-1]['hazards'].append(feature)
+    if meta.get('osmCourse'): features=[f for f in features if f['holes']]
     (folder/'hazard-associations.json').write_text(json.dumps(features,indent=2)+'\n')
-    meta=json.loads((folder/'tees.json').read_text())
     assert 1<=len(meta['tees'])<=6 and all(t['name'].isupper() and len(t['name'])<=8 for t in meta['tees'])
     assert all(isinstance(t['totalYards'],int) and t['totalYards']>0 for t in meta['tees'])
     # The short name heads every view; "SHARPSTOWN / HAZARDS" is the longest checked heading.
@@ -108,8 +112,8 @@ def build(folder):
     for h in holes: h['fairways']=[]; h['fairwayCutouts']=[]; h['tees']=[]
     for ring,cutouts in landcover('golf','fairway'):
         c=centroid(ring)
-        ranked=sorted((min(segment_distance(c,a,b) for a,b in zip(h['path'],h['path'][1:])),h['number']) for h in holes)
-        if ranked[0][0]<=65:
+        ranked=sorted(((min(segment_distance(c,a,b) for a,b in zip(h['path'],h['path'][1:])),h['number']) for h in holes+others),key=lambda x:x[0])
+        if ranked[0][0]<=65 and ranked[0][1]:
             h=holes[ranked[0][1]-1]
             h['fairways'].append(ring); h['fairwayCutouts'].extend(cutouts)
     # OSM tee boxes carry no colour tags; assign each to the hole whose playing line,
@@ -122,8 +126,8 @@ def build(folder):
         if tags(e).get('golf')!='tee': continue
         ring=points(e)
         if ring[0]!=ring[-1]: continue
-        distance,number=min((segment_distance(centroid(ring),*back_line(h)),h['number']) for h in holes)
-        if distance<=25: holes[number-1]['tees'].append(ring)
+        distance,number=min(((segment_distance(centroid(ring),*back_line(h)),h['number']) for h in holes+others),key=lambda x:x[0])
+        if distance<=25 and number: holes[number-1]['tees'].append(ring)
     # Hole-up vector maps share their projection with the phone's position marker.
     # Each hole's watch map is little-endian bytes (hex): tee and green int16 x,y; shape
     # count u8; per shape kind u8, point count u16, OSM id u32; then int16 x,y points.
@@ -167,7 +171,7 @@ def build(folder):
     for h in holes: del h['fairways'], h['fairwayCutouts'], h['tees']
     centers=[h['center'] for h in holes]
     course=dict(id=folder.name,name=meta['course'],short=meta['short'],city=meta['city'],
-        center=[round(sum(c[0] for c in centers)/18,6),round(sum(c[1] for c in centers)/18,6)],
+        center=[round(sum(c[0] for c in centers)/len(centers),6),round(sum(c[1] for c in centers)/len(centers),6)],
         tees=meta['tees'],source='© OpenStreetMap contributors',license='ODbL-1.0',sourceUrl=meta['osmUrl'],
         snapshotTimestamp=r.find('meta').get('osm_base') if r.find('meta') is not None else meta['verifiedDate'],
         target='Derived green centroid; not daily cup position',holes=holes)
@@ -179,7 +183,7 @@ out=ROOT/'courses'; out.mkdir(exist_ok=True)
 (out/'LICENSE.md').write_text((ROOT/'data/LICENSE.md').read_text())
 index=[]
 for folder in sorted((ROOT/'data/courses').iterdir()):
-    if not (folder/'course.osm').exists(): continue
+    if not (folder/'tees.json').exists(): continue
     course,built_in=build(folder)
     course['version']=hashlib.sha1(json.dumps(course,separators=(',',':')).encode()).hexdigest()[:12]
     text=json.dumps(course,separators=(',',':'))+'\n'

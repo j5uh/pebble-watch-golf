@@ -6,7 +6,7 @@ Native C rangefinder for **Pebble Round 2 (`gabbro`)**, with **Sharpstown Park G
 
 1. Choose a course. The phone lists up to five courses, nearest first once it has a GPS position (otherwise the last course played leads). Selecting one downloads it to the phone if needed; it is kept there for offline play.
 2. Choose a tee using Up/Down; names and total lengths come from the course. Select starts a new round on hole 1. Back returns to the course list.
-3. **Up / Down** always select the previous / next hole during play. Selection is manual and wraps through all 18 holes.
+3. **Up / Down** always select the previous / next hole during play. Selection is manual and wraps through all of the course's holes (9 or 18).
 4. **Select** cycles through Green + Layup → all-hazards overview → Map → Green.
 5. **Hold Select** for settings: refresh GPS, change tee, preferred layup approach distance, yards/meters, new round, credits, and return to play.
 6. In settings use Up/Down to browse, Select to open/confirm, Back to cancel/return. Changing tees during a round preserves the current hole.

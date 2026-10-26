@@ -32,7 +32,7 @@ function setCatalog(list) {
     if (c && c.id && c.name && c.center && !seen[c.id]) {seen[c.id]=true; catalog.push({id:c.id,name:c.name,center:c.center,version:c.version});}
   });
 }
-function usableCourse(c,id) {return c && c.id===id && c.holes && c.holes.length===18 && c.tees && c.tees.length>0;}
+function usableCourse(c,id) {return c && c.id===id && c.holes && (c.holes.length===9 || c.holes.length===18) && c.tees && c.tees.length>0;}
 // ponytail: keep in-memory courses for this round; a new catalog version applies next launch.
 // Downloaded courses are kept on the phone so play needs no internet afterwards.
 function loadCourse(id) {
@@ -116,7 +116,7 @@ function publish() {
     if (loadError) p.CourseInfo='!'+loadError;
     send(p); return;
   }
-  var h=course.holes[hole-1];
+  var h=course.holes[Math.min(hole,course.holes.length)-1];
   if (infoSent!==courseId) p.CourseInfo=courseInfo(course);
   if (mapSent!==courseId+':'+hole) p.MapData=hexBytes(h.mapHex);
   if (fix && fixAge()<=MAX_AGE) {
