@@ -40,7 +40,7 @@ SDK documentation: https://developer.repebble.com/llms.txt.
 
 ## Product and display rules
 
-- Up/Down always select holes during play. Select cycles Green + Layup → Hazards → Map. Hold Select opens settings.
+- Up/Down always select holes during play. Select cycles Green + Layup → Hazards (those still ahead; skipped when all are greenside) → Greenside → Map. Hold Select opens settings.
 - Hole selection remains manual. Automatic hole detection and pin placement are explicitly excluded.
 - Phone GPS is mandatory for live distances; never imply independent watch GPS.
 - Keep stale or disconnected measurements clearly unavailable, and simulated GPS explicitly labeled.

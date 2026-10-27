@@ -51,7 +51,7 @@ function loadCourse(id) {
     loading='';
     if (!usableCourse(c,id)) {fallback('COURSE DATA INVALID'); return;}
     loadError=''; courses[id]=c; store('course:'+id,c); publish();
-  },function() {fallback('NO INTERNET - RETRYING');});
+  },function() {fallback('OFFLINE - RETRYING');});
 }
 function away(meters) {
   var v=units?meters/1000:meters/1609.344;
@@ -66,7 +66,7 @@ function courseList() {
     if ((a.c.id===last)!==(b.c.id===last)) return a.c.id===last?-1:1;
     return a.c.name<b.c.name?-1:1;
   });
-  return rows.slice(0,5).map(function(r) {return r.c.id+'|'+r.c.name+'|'+(here?away(r.d):'');}).join(';');
+  return rows.slice(0,12).map(function(r) {return r.c.id+'|'+r.c.name+'|'+(here?away(r.d):'');}).join(';');
 }
 function courseInfo(c) {
   return c.short+'|'+c.holes.map(function(h) {return h.par;}).join('')+'|'+c.tees.map(function(t) {return t.name+':'+t.totalYards;}).join(',');
@@ -131,7 +131,8 @@ function publish() {
     var player=mapPoint(position,h.map); p.MapX=player[0]; p.MapY=player[1];
     p.Par=h.par; p.LayupShot=l?Math.round(l.shot*factor):-1;
     var layupPoint=l?mapPoint(l.target,h.map):[-1000,-1000]; p.LayupX=layupPoint[0]; p.LayupY=layupPoint[1];
-    p.Hazards=geo.hazardDistances(position,h,true).slice(0,8).map(function(x) {
+    // Passed hazards are left out so the hazard view zooms in as the player advances.
+    p.Hazards=geo.hazardDistances(position,h).slice(0,8).map(function(x) {
       var near=mapPoint(x.reachPoint,h.map),far=mapPoint(x.carryPoint,h.map);
       return x.name+','+Math.round(x.reach*factor)+','+Math.round(x.carry*factor)+','+x.osmId+','+near[0]+','+near[1]+','+far[0]+','+far[1];
     }).join('|');

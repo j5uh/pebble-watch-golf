@@ -67,7 +67,7 @@ assert.ok(rows[0].startsWith('memorial-park|Memorial Park Golf Course|0.'),rows[
 // Choosing a downloaded course fetches it once; course details and the hole map follow.
 c.request({Course:'memorial-park'});assert.equal(c.xhrs.at(-1).url.slice(-18),'memorial-park.json');
 assert.equal(c.last().CourseInfo,undefined,'nothing to show until the course arrives');
-c.xhrs.at(-1).reply(404,{});assert.equal(c.last().CourseInfo,'!NO INTERNET - RETRYING');
+c.xhrs.at(-1).reply(404,{});assert.equal(c.last().CourseInfo,'!OFFLINE - RETRYING');
 c.advance(5000);c.xhrs.at(-1).reply(200,memorial);
 let first=c.last();assert.ok(first.CourseInfo.startsWith('MEMORIAL|'+memorial.holes.map(h=>h.par).join('')+'|BLUE:7292,'));
 assert.deepEqual(Array.from(first.MapData),[...Buffer.from(memorial.holes[0].mapHex,'hex')]);assert.ok(first.Center>0);
@@ -94,7 +94,7 @@ assert.equal(JSON.parse(updated.storage['course:memorial-park']).version,memoria
 assert.ok(updated.last().CourseInfo.startsWith('MEMORIAL|'));
 const offline=cachedHarness('old');offline.xhrs[1].onerror();
 assert.ok(offline.last().CourseInfo.startsWith('MEMORIAL|'),'offline uses stale usable cache');
-assert.ok(!offline.messages.some(p=>p.CourseInfo==='!NO INTERNET - RETRYING'));
+assert.ok(!offline.messages.some(p=>p.CourseInfo==='!OFFLINE - RETRYING'));
 const invalid=cachedHarness('old');invalid.xhrs[1].reply(200,{id:memorial.id});
 assert.ok(invalid.last().CourseInfo.startsWith('MEMORIAL|'),'invalid 200 uses usable cache');
 const matching=cachedHarness(memorial.version);

@@ -5,14 +5,15 @@ import math
 import zipfile
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-course=json.loads((root/'src/pkjs/course.json').read_text())
 parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--course',help='Course id from courses/ (run the importer first); defaults to the built-in course')
 parser.add_argument('--distance-yards',type=float,help='Fixed approach distance along hole 1 playing line')
 parser.add_argument('--fixed-hole',type=int,choices=range(1,19),help='Hold GPS at the mapped starting tee of this hole')
 parser.add_argument('--white-first-tee',action='store_true',help='Hold GPS at an approximate hole 1 white tee position')
 parser.add_argument('--walk',action='store_true',help='Cycle fake GPS from the tee to 10 yards from the selected green')
 parser.add_argument('--step-seconds',type=int,default=12,help='Seconds spent at each fake position')
 args=parser.parse_args()
+course=json.loads((root/(f'courses/{args.course}.json' if args.course else 'src/pkjs/course.json')).read_text())
 def approach(hole,yards):
     remaining=max(0,yards)*0.9144
     path=hole['path'][:-1]+[hole['center']]

@@ -3,12 +3,16 @@
 #include "hazard-leaders.h"
 
 #define MAX_HAZARDS 8
+// The hazard view fills the gap between the hole heading (ends y=77) and the legend (y=211).
+#define HAZARD_H 132
 #define MAX_FIX_AGE 30
 // The phone sends one hole map at a time; scripts/import-course.py checks these limits.
 #define MAX_POINTS 800
 #define MAX_SHAPES 32
 #define MAX_TEES 6
-#define MAX_COURSES 5
+// Matches the phone's rows.slice(0,12) in courseList().
+#define MAX_COURSES 12
+#define COURSE_ROWS 5
 typedef enum { SCREEN_COURSES, SCREEN_TEES, SCREEN_PLAY, SCREEN_MENU, SCREEN_TARGET } Screen;
 typedef struct { uint16_t start, count; uint8_t kind; uint32_t osm_id; } MapShape;
 typedef struct { uint16_t start, count; GPoint tee, green; } HoleMap;
@@ -24,7 +28,7 @@ static bool course_ready=false;
 typedef struct { char name[24]; int reach, carry; uint32_t osm_id; GPoint near_edge, far_edge; } Hazard;
 static Window *window, *about;
 static TextLayer *credits;
-static Layer *canvas, *map_canvas, *hazard_canvas;
+static Layer *canvas, *map_canvas, *hazard_canvas, *status_canvas;
 static const char *main_font=FONT_KEY_GOTHIC_28_BOLD;
 static GColor status_color;
 static Screen screen=SCREEN_COURSES;
@@ -47,7 +51,10 @@ static void number(char *buffer, size_t size, int value, bool show) {
   if (!show || value<0) snprintf(buffer,size,"--"); else snprintf(buffer,size,"%d",value);
 }
 static Screen home(void) {return round_started?SCREEN_PLAY:course_id[0]?SCREEN_TEES:SCREEN_COURSES;}
+static bool hazards_redundant(void);
 static void render(void) {
+  // Skip straight to Greenside when the hazard view would show the same hazards.
+  if (screen==SCREEN_PLAY && page==1 && hazards_redundant()) page=2;
   bool live=usable();
   const char *unit=units?"METERS":"YARDS", *name=course_ready?course_short:"PEBBLE GOLF";
   snprintf(heading_text,sizeof(heading_text),"%s",name);
@@ -55,27 +62,25 @@ static void render(void) {
   main_font=FONT_KEY_GOTHIC_28_BOLD;
   if (screen==SCREEN_COURSES) {
     snprintf(hole_text,sizeof(hole_text),"SELECT COURSE");
-    snprintf(context_text,sizeof(context_text),"%s",choice_count>1?"UP / DOWN TO CHOOSE":"");
+    // The list itself is drawn in draw(); the context line shows the highlighted course's distance.
+    context_text[0]='\0';
     main_font=FONT_KEY_GOTHIC_24_BOLD;
     caption_text[0]='\0';
     if (choice_count) {
       const CourseChoice *c=&choices[choice_index];
-      snprintf(main_text,sizeof(main_text),"%s",c->name);
-      if (c->away[0]) snprintf(caption_text,sizeof(caption_text),"%s AWAY",c->away);
-      snprintf(left_text,sizeof(left_text),"%d",choice_index+1); snprintf(left_cap,sizeof(left_cap),"OF %d",choice_count);
-      snprintf(right_text,sizeof(right_text),"SELECT"); snprintf(right_cap,sizeof(right_cap),"TO PLAY");
+      snprintf(context_text,sizeof(context_text),c->away[0]?"%s AWAY":"UP / DOWN TO CHOOSE",c->away);
     } else snprintf(main_text,sizeof(main_text),"Finding courses");
     if (!phone_connected) snprintf(status_text,sizeof(status_text),"PHONE DISCONNECTED");
-    else if (!ready) snprintf(status_text,sizeof(status_text),"OPEN PEBBLE PHONE APP");
-    else if (choice_count && !choices[0].away[0]) snprintf(status_text,sizeof(status_text),"NO GPS YET - NOT BY DISTANCE");
-    else snprintf(status_text,sizeof(status_text),"NEAREST FIRST");
+    else if (!ready) snprintf(status_text,sizeof(status_text),"OPEN PHONE APP");
+    else if (choice_count && !choices[0].away[0]) snprintf(status_text,sizeof(status_text),"NO GPS - UNSORTED");
+    else snprintf(status_text,sizeof(status_text),"%d OF %d - NEAREST",choice_index+1,choice_count);
   } else if (screen==SCREEN_TEES && !course_ready) {
     snprintf(hole_text,sizeof(hole_text),"SELECT TEE BOX");
     context_text[0]='\0';
     main_font=FONT_KEY_GOTHIC_24_BOLD;
     snprintf(main_text,sizeof(main_text),"Loading course");
     snprintf(caption_text,sizeof(caption_text),"%s",course_error[0]?course_error:"FROM PHONE");
-    snprintf(status_text,sizeof(status_text),"%s",phone_connected?"BACK: CHOOSE COURSE":"PHONE DISCONNECTED");
+    snprintf(status_text,sizeof(status_text),"%s",phone_connected?"BACK: COURSES":"PHONE DISCONNECTED");
   } else if (screen==SCREEN_TEES) {
     snprintf(hole_text,sizeof(hole_text),"SELECT TEE BOX");
     snprintf(context_text,sizeof(context_text),"UP / DOWN TO CHOOSE");
@@ -86,7 +91,7 @@ static void render(void) {
     snprintf(left_text,sizeof(left_text),"%d,%03d",total/1000,total%1000);
     snprintf(left_cap,sizeof(left_cap),"TOTAL %s",unit);
     snprintf(right_text,sizeof(right_text),"%d",par); snprintf(right_cap,sizeof(right_cap),"PAR / %d HOLES",hole_count);
-    snprintf(status_text,sizeof(status_text),"HOLD SELECT: SETTINGS");
+    snprintf(status_text,sizeof(status_text),"HOLD SELECT: MENU");
   } else if (screen==SCREEN_TARGET) {
     snprintf(hole_text,sizeof(hole_text),"LAYUP PREFERENCE");
     snprintf(context_text,sizeof(context_text),"UP / DOWN: 25 %s",unit);
@@ -107,35 +112,36 @@ static void render(void) {
     snprintf(right_cap,sizeof(right_cap),"TO OPEN");
     snprintf(status_text,sizeof(status_text),"BACK TO RETURN");
   } else {
-    snprintf(hole_text,sizeof(hole_text),"HOLE %02d  PAR %d",hole,pars[hole-1]-'0');
+    snprintf(hole_text,sizeof(hole_text),"HOLE %d  PAR %d",hole,pars[hole-1]-'0');
     context_text[0]='\0';
     if (page==0) {
       snprintf(heading_text,sizeof(heading_text),"%s / GREEN",name);
       main_font=FONT_KEY_ROBOTO_BOLD_SUBSET_49;
       number(main_text,sizeof(main_text),middle,live);
-      snprintf(caption_text,sizeof(caption_text),"%s TO MIDDLE",unit);
+      snprintf(caption_text,sizeof(caption_text),"MIDDLE %s",units?"M":"YD");
       number(left_text,sizeof(left_text),front,live); number(right_text,sizeof(right_text),back,live);
       snprintf(left_cap,sizeof(left_cap),"FRONT"); snprintf(right_cap,sizeof(right_cap),"BACK");
-    } else if (page==1) {
+    } else if (page==1 || page==2) {
       snprintf(heading_text,sizeof(heading_text),"%s / HAZARDS",name);
       context_text[0]='\0';
       main_text[0]=caption_text[0]='\0';
     }
-    if (page==2) snprintf(heading_text,sizeof(heading_text),"%s / MAP",name);
+    if (page==2) snprintf(heading_text,sizeof(heading_text),"%s / GREENSIDE",name);
+    if (page==3) snprintf(heading_text,sizeof(heading_text),"%s / MAP",name);
     if (!phone_connected) snprintf(status_text,sizeof(status_text),"PHONE DISCONNECTED");
-    else if (!ready) snprintf(status_text,sizeof(status_text),"OPEN PEBBLE PHONE APP");
+    else if (!ready) snprintf(status_text,sizeof(status_text),"OPEN PHONE APP");
     else if (course_error[0] && map_hole!=hole) snprintf(status_text,sizeof(status_text),"%s",course_error);
-    else if (live && gps_state==6) snprintf(status_text,sizeof(status_text),"SIMULATED GPS / %ds",fix_age());
-    else if (live) snprintf(status_text,sizeof(status_text),"%s +/- %dm / %ds",accuracy>30?"WEAK GPS":"GPS",accuracy,fix_age());
+    else if (live && gps_state==6) snprintf(status_text,sizeof(status_text),"SIMULATED GPS - %ds",fix_age());
+    else if (live) snprintf(status_text,sizeof(status_text),"%s +-%dm - %ds",accuracy>30?"WEAK":"GPS",accuracy,fix_age());
     else {
-      const char *states[]={"WAITING FOR GPS","GETTING PHONE GPS","ALLOW PHONE LOCATION","GPS RETRYING","GPS TIMEOUT - RETRYING","GPS STALE - RETRYING"};
+      const char *states[]={"WAITING FOR GPS","GETTING PHONE GPS","ALLOW LOCATION","GPS RETRYING","GPS TIMEOUT","GPS STALE"};
       snprintf(status_text,sizeof(status_text),"%s",states[gps_state>=0 && gps_state<=5?gps_state:1]);
     }
   }
   status_color=screen==SCREEN_PLAY && !live?GColorWindsorTan:GColorDarkGray;
   if (canvas) layer_mark_dirty(canvas);
-  if (hazard_canvas) {layer_set_hidden(hazard_canvas,!(screen==SCREEN_PLAY && page==1)); layer_mark_dirty(hazard_canvas);}
-  if (map_canvas) {layer_set_hidden(map_canvas,!(screen==SCREEN_PLAY && page==2)); layer_mark_dirty(map_canvas);}
+  if (hazard_canvas) {layer_set_hidden(hazard_canvas,!(screen==SCREEN_PLAY && (page==1 || page==2))); layer_mark_dirty(hazard_canvas);}
+  if (map_canvas) {layer_set_hidden(map_canvas,!(screen==SCREEN_PLAY && page==3)); layer_mark_dirty(map_canvas);}
 }
 static bool resend=false, resend_fresh=false, inflight_fresh=false;
 static AppTimer *retry_timer=NULL;
@@ -219,7 +225,7 @@ static bool parse_info(const char *text) {
 // "id|name|distance;..." nearest first; keep the highlighted course if it is still listed.
 static void parse_courses(const char *text) {
   char selected[32]; snprintf(selected,sizeof(selected),"%s",choice_count?choices[choice_index].id:"");
-  char buffer[512]; snprintf(buffer,sizeof(buffer),"%s",text);
+  static char buffer[1024]; snprintf(buffer,sizeof(buffer),"%s",text);
   choice_count=0; choice_index=0;
   for (char *row=buffer;row && *row && choice_count<MAX_COURSES;) {
     char *next=strchr(row,';'); if (next) *next++='\0';
@@ -329,7 +335,7 @@ static void select_click(ClickRecognizerRef r,void *c) {
       default: screen=home(); break;
     }
   } else if (page==0) {page=1; hazard_index=0;}
-  else page=(page+1)%3;
+  else page=(page+1)%4;
   render();
 }
 static void settings(ClickRecognizerRef r,void *c) {if (screen==SCREEN_COURSES) return; screen=SCREEN_MENU; menu_index=0; render();}
@@ -351,59 +357,64 @@ static void draw_text(GContext *ctx,const char *value,int x,int y,int width,int 
   graphics_context_set_text_color(ctx,color);
   graphics_draw_text(ctx,value,fonts_get_system_font(font),GRect(x,y,width,height),GTextOverflowModeTrailingEllipsis,GTextAlignmentCenter,NULL);
 }
-// Cache system-font glyphs once per heading, then place their centers on the rim.
-static GBitmap *heading_glyphs[48];
-static int heading_widths[48], heading_count, heading_width;
-static char cached_heading[48];
-static void clear_heading(void) {
-  for (int i=0;i<heading_count;i++) gbitmap_destroy(heading_glyphs[i]);
-  heading_count=0;
+// Cache system-font glyphs once per string, then place their centers on the rim.
+// Glyphs are captured through the frame buffer, so cache before drawing anything else.
+typedef struct {GBitmap *glyphs[64]; int widths[64], count, width, height; uint8_t color; char text[64];} CurvedText;
+static CurvedText heading_curve, status_curve;
+static void clear_curve(CurvedText *c) {
+  for (int i=0;i<c->count;i++) gbitmap_destroy(c->glyphs[i]);
+  c->count=0; c->text[0]=0;
 }
-static void draw_heading(GContext *ctx) {
-  if (strcmp(cached_heading,heading_text)!=0) {
-    clear_heading(); heading_width=0;
-    GFont font=fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
-    for (int i=0;heading_text[i] && i<47;i++) {
-      char glyph[2]={heading_text[i],0};
-      int width=heading_text[i]==' '?4:graphics_text_layout_get_content_size(glyph,font,GRect(0,0,40,24),GTextOverflowModeFill,GTextAlignmentLeft).w;
-      width+=1;
-      GBitmap *bitmap=gbitmap_create_blank(GSize(width,24),GBitmapFormat8Bit);
-      if (!bitmap) break;
-      graphics_context_set_fill_color(ctx,GColorWhite);
-      graphics_fill_rect(ctx,GRect(100,110,40,24),0,GCornerNone);
-      graphics_context_set_text_color(ctx,GColorDarkGreen);
-      graphics_draw_text(ctx,glyph,font,GRect(100,110,width,24),GTextOverflowModeFill,GTextAlignmentLeft,NULL);
-      GBitmap *frame=graphics_capture_frame_buffer(ctx);
-      uint8_t *pixels=gbitmap_get_data(bitmap);
-      int stride=gbitmap_get_bytes_per_row(bitmap);
-      for (int y=0;y<24;y++) {
-        GBitmapDataRowInfo row=gbitmap_get_data_row_info(frame,110+y);
-        for (int x=0;x<width;x++) {
-          uint8_t pixel=row.data[100+x];
-          pixels[y*stride+x]=pixel==GColorWhite.argb?GColorClear.argb:pixel;
-        }
-      }
-      graphics_release_frame_buffer(ctx,frame);
-      heading_glyphs[heading_count]=bitmap;
-      heading_widths[heading_count++]=width; heading_width+=width;
-    }
-    snprintf(cached_heading,sizeof(cached_heading),"%s",heading_text);
+static void cache_curve(GContext *ctx,CurvedText *c,const char *text,const char *font_key,int height,GColor color) {
+  if (!strcmp(c->text,text) && c->color==color.argb) return;
+  clear_curve(c); c->width=0; c->height=height; c->color=color.argb;
+  GFont font=fonts_get_system_font(font_key);
+  for (int i=0;text[i] && i<63;i++) {
+    char glyph[2]={text[i],0};
+    int width=text[i]==' '?4:graphics_text_layout_get_content_size(glyph,font,GRect(0,0,40,height),GTextOverflowModeFill,GTextAlignmentLeft).w;
+    width+=1;
+    GBitmap *bitmap=gbitmap_create_blank(GSize(width,height),GBitmapFormat8Bit);
+    if (!bitmap) break;
     graphics_context_set_fill_color(ctx,GColorWhite);
-    graphics_fill_rect(ctx,GRect(100,110,40,24),0,GCornerNone);
+    graphics_fill_rect(ctx,GRect(100,110,40,height),0,GCornerNone);
+    graphics_context_set_text_color(ctx,color);
+    graphics_draw_text(ctx,glyph,font,GRect(100,110,width,height),GTextOverflowModeFill,GTextAlignmentLeft,NULL);
+    GBitmap *frame=graphics_capture_frame_buffer(ctx);
+    if (!frame) {gbitmap_destroy(bitmap); break;}
+    uint8_t *pixels=gbitmap_get_data(bitmap);
+    int stride=gbitmap_get_bytes_per_row(bitmap);
+    for (int y=0;y<height;y++) {
+      GBitmapDataRowInfo row=gbitmap_get_data_row_info(frame,110+y);
+      for (int x=0;x<width;x++) {
+        uint8_t pixel=row.data[100+x];
+        pixels[y*stride+x]=pixel==GColorWhite.argb?GColorClear.argb:pixel;
+      }
+    }
+    graphics_release_frame_buffer(ctx,frame);
+    c->glyphs[c->count]=bitmap;
+    c->widths[c->count++]=width; c->width+=width;
   }
-  // Center the entire measured string about twelve o'clock, including spaces.
+  snprintf(c->text,sizeof(c->text),"%s",text);
+  graphics_context_set_fill_color(ctx,GColorWhite);
+  graphics_fill_rect(ctx,GRect(100,110,40,height),0,GCornerNone);
+}
+// Center the entire measured string about twelve o'clock (frown) or six o'clock (smile), including spaces.
+static void draw_curve(GContext *ctx,const CurvedText *c,int radius,int pivot_y,bool bottom) {
   int offset=0;
-  const int radius=112;
   graphics_context_set_compositing_mode(ctx,GCompOpSet);
-  for (int i=0;i<heading_count;i++) {
-    int width=heading_widths[i];
-    int angle=(2*offset+width-heading_width)*TRIG_MAX_ANGLE/(2*radius*6283/1000);
-    GPoint center=GPoint(130+(int)(sin_lookup(angle)*radius/TRIG_MAX_RATIO),
-                        130-(int)(cos_lookup(angle)*radius/TRIG_MAX_RATIO));
-    graphics_draw_rotated_bitmap(ctx,heading_glyphs[i],GPoint(width/2,12),angle,center);
+  for (int i=0;i<c->count;i++) {
+    int width=c->widths[i];
+    int angle=(2*offset+width-c->width)*TRIG_MAX_ANGLE/(2*radius*6283/1000);
+    int dx=sin_lookup(angle)*radius/TRIG_MAX_RATIO, dy=cos_lookup(angle)*radius/TRIG_MAX_RATIO;
+    GPoint center=GPoint(130+dx,bottom?130+dy:130-dy);
+    graphics_draw_rotated_bitmap(ctx,c->glyphs[i],GPoint(width/2,pivot_y),bottom?-angle:angle,center);
     offset+=width;
   }
 }
+static void draw_heading(GContext *ctx) {draw_curve(ctx,&heading_curve,112,12,false);}
+// Its own top layer, so the map and hazard views never cover the rim text.
+// The bottom arc clears the layup line for about 18 characters; keep status strings that short.
+static void draw_status(Layer *layer,GContext *ctx) {draw_curve(ctx,&status_curve,116,9,true);}
 static GPoint map_xy(int px,int py,MapCamera c) {
   float x=(px-c.x)*c.zoom/16+MAP_W/2, y=(py-c.y)*c.zoom/16+MAP_H/2;
   // Limit distant geometry to the representable range before viewport clipping.
@@ -587,17 +598,58 @@ static void draw_map(Layer *layer,GContext *ctx) {
 }
 
 static GPoint hazard_preview_point(GPoint p,float scale,float cx,float cy) {
-  return GPoint((int)camera_max(-10000,camera_min(10000,(p.x-cx)*scale+112)),(int)camera_max(-10000,camera_min(10000,(p.y-cy)*scale+56)));
+  return GPoint((int)camera_max(-10000,camera_min(10000,(p.x-cx)*scale+112)),(int)camera_max(-10000,camera_min(10000,(p.y-cy)*scale+HAZARD_H/2)));
 }
 typedef struct {const MapShape *shape; const Hazard *reading; GPoint center,near_edge,far_edge; int side;} HazardCallout;
+// Greenside frames hazards centred within one green-width of the green; the hazard view
+// frames those the phone still reports ahead of the player (all of them without live GPS).
+static bool hazard_framed(const MapShape *shape,const int *zone) {
+  if (shape->kind!=2 && shape->kind!=3) return false;
+  if (zone) {
+    int32_t sx=0,sy=0;
+    for (int j=0;j<shape->count;j++) {sx+=map_points[shape->start+j].x; sy+=map_points[shape->start+j].y;}
+    int x=sx/shape->count,y=sy/shape->count;
+    return x>=zone[0] && x<=zone[2] && y>=zone[1] && y<=zone[3];
+  }
+  if (!usable()) return true;
+  for (int h=0;h<hazard_count;h++) if (hazards[h].osm_id==shape->osm_id) return true;
+  return false;
+}
+// The green's bounding box grown by one green-width on every side.
+static void greenside_zone(int *zone) {
+  zone[0]=zone[1]=32767; zone[2]=zone[3]=-32768;
+  for (int i=0;i<hole_map.count;i++) {
+    const MapShape *shape=&map_shapes[hole_map.start+i];
+    if (shape->kind==1) for (int j=0;j<shape->count;j++) {
+      GPoint p=map_points[shape->start+j];
+      if (p.x<zone[0]) zone[0]=p.x;
+      if (p.y<zone[1]) zone[1]=p.y;
+      if (p.x>zone[2]) zone[2]=p.x;
+      if (p.y>zone[3]) zone[3]=p.y;
+    }
+  }
+  int pad=camera_max(zone[2]-zone[0],zone[3]-zone[1]);
+  zone[0]-=pad; zone[1]-=pad; zone[2]+=pad; zone[3]+=pad;
+}
+// The hazard view adds nothing when every hazard it would frame is greenside.
+static bool hazards_redundant(void) {
+  if (map_hole!=hole) return false;
+  int zone[4]; greenside_zone(zone);
+  for (int i=0;i<hole_map.count;i++) {
+    const MapShape *shape=&map_shapes[hole_map.start+i];
+    if (hazard_framed(shape,NULL) && !hazard_framed(shape,zone)) return false;
+  }
+  return true;
+}
 static void draw_hazard_image(Layer *layer,GContext *ctx) {
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
   if (map_hole!=hole) {draw_text(ctx,"Loading map",0,38,224,28,FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
   const HoleMap *map=&hole_map;
+  int zone[4],*greenside=page==2?zone:NULL; greenside_zone(zone);
   int minx=32767,miny=32767,maxx=-32768,maxy=-32768, feature_count=0;
   for (int i=0;i<map->count;i++) {
     const MapShape *shape=&map_shapes[map->start+i];
-    if (shape->kind!=1 && shape->kind!=2 && shape->kind!=3) continue;
+    if (shape->kind!=1 && !hazard_framed(shape,greenside)) continue;
     if (shape->kind!=1) feature_count++;
     for (int j=0;j<shape->count;j++) {
       GPoint p=map_points[shape->start+j];
@@ -607,8 +659,8 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
       if (p.y>maxy) maxy=p.y;
     }
   }
-  if (!feature_count) {draw_text(ctx,"No mapped hazards",0,38,224,28,FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
-  float scale=camera_min(96/camera_max(1,maxx-minx),88/camera_max(1,maxy-miny));
+  if (!feature_count && !greenside) {draw_text(ctx,usable()?"No hazards ahead":"No mapped hazards",0,38,224,28,FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
+  float scale=camera_min(96/camera_max(1,maxx-minx),(HAZARD_H-24)/camera_max(1,maxy-miny));
   float cx=(minx+maxx)/2.0f,cy=(miny+maxy)/2.0f;
   HazardCallout callouts[MAX_HAZARDS]; int count=0;
   GPoint green=hazard_preview_point(map->green,scale,cx,cy);
@@ -620,14 +672,14 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
       GPoint *points=malloc(shape->count*sizeof(GPoint)); if (!points) continue;
       int sumx=0,sumy=0;
       for (int j=0;j<shape->count;j++) {points[j]=hazard_preview_point(map_points[shape->start+j],scale,cx,cy); sumx+=points[j].x; sumy+=points[j].y;}
-      if ((shape->kind==2 || shape->kind==3) && count<MAX_HAZARDS) {
+      if (hazard_framed(shape,greenside) && count<MAX_HAZARDS) {
         HazardCallout *c=&callouts[count++]; c->shape=shape; c->reading=NULL;
         c->center=GPoint(sumx/shape->count,sumy/shape->count); c->side=c->center.x<green.x?0:1;
         for (int h=0;h<hazard_count;h++) if (hazards[h].osm_id==shape->osm_id) {c->reading=&hazards[h]; break;}
         c->near_edge=c->reading?hazard_preview_point(c->reading->near_edge,scale,cx,cy):c->center;
         c->far_edge=c->reading?hazard_preview_point(c->reading->far_edge,scale,cx,cy):c->center;
       }
-      int clipped_count=0; GPoint *clipped=map_clip_polygon(points,shape->count,60,0,164,111,&clipped_count);
+      int clipped_count=0; GPoint *clipped=map_clip_polygon(points,shape->count,60,0,164,HAZARD_H-1,&clipped_count);
       free(points); points=clipped;
       if (!points || clipped_count<3) {free(points); continue;}
       GPathInfo info={.num_points=clipped_count,.points=points}; GPath *path=gpath_create(&info);
@@ -650,33 +702,28 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
     HazardCallout *c=&callouts[i]; int side=c->side,slot=side_index[side]++;
     bool has_reading=usable() && c->reading;
     GPoint near=has_reading?c->near_edge:c->center,far=has_reading?c->far_edge:c->center;
-    int offset=side==green_side?44:0,available=112-offset;
+    int offset=side==green_side?44:0,available=HAZARD_H-offset;
     int slot_start=offset+slot*available/side_count[side],slot_end=offset+(slot+1)*available/side_count[side];
     int top=(near.y+far.y)/2-14;
     if (top<slot_start) top=slot_start;
     if (top>slot_end-28) top=slot_end-28;
-    int leader_x=side?(int)camera_max(162,camera_min(180,(near.x>far.x?near.x:far.x)+7)):
-      (int)camera_min(62,camera_max(44,(near.x<far.x?near.x:far.x)-7));
-    LeaderPlan labels=hazard_leader_plan((LeaderPoint){near.x,near.y},(LeaderPoint){far.x,far.y},leader_x,top+7);
+    // Labels are 50px wide ("BUNKER", "309-318"), so leaders stop short of the canvas edges.
+    int leader_x=side?(int)camera_max(158,camera_min(172,(near.x>far.x?near.x:far.x)+7)):
+      (int)camera_min(66,camera_max(52,(near.x<far.x?near.x:far.x)-7));
+    // One leader per hazard to its centroid; type above, reach-carry range below.
     graphics_context_set_stroke_width(ctx,1);
-    if (has_reading) {
-      graphics_context_set_stroke_color(ctx,GColorDarkGray); graphics_draw_line(ctx,GPoint(leader_x,labels.reach_y),near);
-      graphics_context_set_stroke_color(ctx,GColorCobaltBlue); graphics_draw_line(ctx,GPoint(leader_x,labels.carry_y),far);
-    }
-    char reach[24],carry[24];
-    if (has_reading) {snprintf(reach,sizeof(reach),"R %d",c->reading->reach); snprintf(carry,sizeof(carry),"C %d",c->reading->carry);}
-    else {snprintf(reach,sizeof(reach),"R --"); snprintf(carry,sizeof(carry),"C --");}
-    int text_x=side?leader_x+2:leader_x-42;
+    GColor tone=c->shape->kind==2?GColorWindsorTan:GColorDukeBlue;
+    graphics_context_set_stroke_color(ctx,tone); graphics_draw_line(ctx,GPoint(leader_x,top+14),c->center);
+    char range[24];
+    if (has_reading) snprintf(range,sizeof(range),"%d-%d",c->reading->reach,c->reading->carry); else snprintf(range,sizeof(range),"--");
+    int text_x=side?leader_x+2:leader_x-52;
     GTextAlignment alignment=side?GTextAlignmentLeft:GTextAlignmentRight;
-    graphics_context_set_fill_color(ctx,GColorWhite);
-    graphics_fill_rect(ctx,GRect(text_x,labels.reach_y-7,40,14),0,GCornerNone);
-    graphics_fill_rect(ctx,GRect(text_x,labels.carry_y-7,40,14),0,GCornerNone);
-    graphics_context_set_text_color(ctx,GColorDarkGray);
-    graphics_draw_text(ctx,reach,fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),GRect(text_x,labels.reach_y-7,40,16),GTextOverflowModeTrailingEllipsis,alignment,NULL);
+    graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,GRect(text_x,top,50,28),0,GCornerNone);
+    graphics_context_set_text_color(ctx,tone);
+    graphics_draw_text(ctx,c->shape->kind==2?"BUNKER":"WATER",fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),GRect(text_x,top-1,50,16),GTextOverflowModeTrailingEllipsis,alignment,NULL);
     graphics_context_set_text_color(ctx,GColorCobaltBlue);
-    graphics_draw_text(ctx,carry,fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),GRect(text_x,labels.carry_y-7,40,16),GTextOverflowModeTrailingEllipsis,alignment,NULL);
-    graphics_context_set_fill_color(ctx,GColorDarkGray); graphics_fill_circle(ctx,near,1);
-    graphics_context_set_fill_color(ctx,GColorCobaltBlue); graphics_fill_circle(ctx,far,1);
+    graphics_draw_text(ctx,range,fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),GRect(text_x,top+12,50,16),GTextOverflowModeTrailingEllipsis,alignment,NULL);
+    graphics_context_set_fill_color(ctx,tone); graphics_fill_circle(ctx,c->center,2);
   }
   GPoint f=green_edges_valid?hazard_preview_point(green_front,scale,cx,cy):green;
   GPoint b=green_edges_valid?hazard_preview_point(green_back,scale,cx,cy):green;
@@ -700,31 +747,44 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
 
 static void draw(Layer *layer,GContext *ctx) {
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
-  if (screen==SCREEN_PLAY && page==2) {
+  cache_curve(ctx,&heading_curve,heading_text,FONT_KEY_GOTHIC_18_BOLD,24,GColorDarkGreen);
+  cache_curve(ctx,&status_curve,status_text,FONT_KEY_GOTHIC_14_BOLD,18,status_color);
+  if (screen==SCREEN_PLAY && page==3) {
     draw_heading(ctx);
     draw_text(ctx,hole_text,22,36,216,22,FONT_KEY_GOTHIC_18_BOLD,GColorDarkGreen);
-    draw_text(ctx,status_text,32,237,196,18,FONT_KEY_GOTHIC_14,status_color);
     return;
   }
   draw_heading(ctx);
   draw_text(ctx,hole_text,22,47,216,30,FONT_KEY_GOTHIC_24_BOLD,GColorDarkGreen);
-  if (!(screen==SCREEN_PLAY && page==1)) draw_text(ctx,context_text,20,77,220,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
-  if (screen==SCREEN_PLAY && page==1) {
-    draw_text(ctx,units?"R: REACH / C: CARRY (M)":"R: REACH / C: CARRY (YD)",24,211,212,17,FONT_KEY_GOTHIC_14,GColorDarkGreen);
-    draw_text(ctx,status_text,32,231,196,18,FONT_KEY_GOTHIC_14,status_color); return;
+  if (!(screen==SCREEN_PLAY && (page==1 || page==2))) draw_text(ctx,context_text,20,77,220,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+  if (screen==SCREEN_PLAY && (page==1 || page==2)) {
+    draw_text(ctx,units?"REACH - CARRY (M)":"REACH - CARRY (YD)",24,211,212,17,FONT_KEY_GOTHIC_14,GColorDarkGreen);
+    return;
+  }
+  if (screen==SCREEN_COURSES && choice_count) {
+    // Rows stay within the circle's chord at the lowest row (y=221 on the 260px round display).
+    // Scroll so the highlight stays in the middle row where possible.
+    int first=choice_index-COURSE_ROWS/2;
+    if (first>choice_count-COURSE_ROWS) first=choice_count-COURSE_ROWS;
+    if (first<0) first=0;
+    for (int i=first;i<choice_count && i<first+COURSE_ROWS;i++) {
+      int y=96+25*(i-first); bool on=i==choice_index;
+      if (on) {graphics_context_set_fill_color(ctx,GColorCobaltBlue); graphics_fill_rect(ctx,GRect(37,y,186,25),6,GCornersAll);}
+      draw_text(ctx,choices[i].name,41,y,178,24,FONT_KEY_GOTHIC_18_BOLD,on?GColorWhite:GColorCobaltBlue);
+    }
+    return;
   }
   if (screen==SCREEN_PLAY && page==0) {
-    draw_text(ctx,main_text,15,77,230,59,main_font,GColorCobaltBlue);
-    draw_text(ctx,caption_text,15,134,230,20,FONT_KEY_GOTHIC_14,GColorDarkGreen);
-    draw_text(ctx,left_text,32,153,94,32,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
-    draw_text(ctx,right_text,134,153,94,32,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
-    draw_text(ctx,left_cap,28,183,102,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
-    draw_text(ctx,right_cap,130,183,102,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+    draw_text(ctx,main_text,80,92,100,52,strlen(main_text)>3 || main_text[0]=='-'?FONT_KEY_GOTHIC_28_BOLD:main_font,GColorCobaltBlue);
+    draw_text(ctx,caption_text,80,146,100,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+    draw_text(ctx,left_text,18,113,60,32,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
+    draw_text(ctx,right_text,182,113,60,32,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
+    draw_text(ctx,left_cap,18,146,60,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+    draw_text(ctx,right_cap,182,146,60,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
     char layup[48],shot[16]; number(shot,sizeof(shot),layup_shot,usable());
     if (usable() && layup_shot<0) snprintf(layup,sizeof(layup),"NO FORWARD LAYUP TARGET");
     else snprintf(layup,sizeof(layup),"LAYUP: HIT %s / LEAVE %d",shot,target);
-    draw_text(ctx,layup,22,207,216,20,FONT_KEY_GOTHIC_14_BOLD,GColorDarkGreen);
-    draw_text(ctx,status_text,32,231,196,18,FONT_KEY_GOTHIC_14,status_color);
+    if (pars[hole-1]-'0'!=3) draw_text(ctx,layup,22,77,216,18,FONT_KEY_GOTHIC_14_BOLD,GColorDarkGreen);
     return;
   }
   draw_text(ctx,main_text,15,94,230,59,main_font,GColorCobaltBlue);
@@ -733,17 +793,18 @@ static void draw(Layer *layer,GContext *ctx) {
   draw_text(ctx,right_text,134,172,94,34,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
   draw_text(ctx,left_cap,28,203,102,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
   draw_text(ctx,right_cap,130,203,102,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
-  draw_text(ctx,status_text,32,225,196,18,FONT_KEY_GOTHIC_14,status_color);
 }
 static void load(Window *w) {
   canvas=layer_create(layer_get_bounds(window_get_root_layer(w)));
   layer_set_update_proc(canvas,draw); layer_add_child(window_get_root_layer(w),canvas);
   map_canvas=layer_create(GRect((260-MAP_W)/2,60,MAP_W,MAP_H)); layer_set_update_proc(map_canvas,draw_map);
   layer_add_child(canvas,map_canvas);
-  hazard_canvas=layer_create(GRect(18,98,224,112)); layer_set_update_proc(hazard_canvas,draw_hazard_image);
-  layer_add_child(canvas,hazard_canvas); render();
+  hazard_canvas=layer_create(GRect(18,78,224,HAZARD_H)); layer_set_update_proc(hazard_canvas,draw_hazard_image);
+  layer_add_child(canvas,hazard_canvas);
+  status_canvas=layer_create(layer_get_bounds(canvas)); layer_set_update_proc(status_canvas,draw_status);
+  layer_add_child(canvas,status_canvas); render();
 }
-static void unload(Window *w) {clear_heading(); cached_heading[0]=0;layer_destroy(hazard_canvas); hazard_canvas=NULL; layer_destroy(map_canvas); map_canvas=NULL; layer_destroy(canvas); canvas=NULL;}
+static void unload(Window *w) {clear_curve(&heading_curve); clear_curve(&status_curve); layer_destroy(status_canvas); status_canvas=NULL; layer_destroy(hazard_canvas); hazard_canvas=NULL; layer_destroy(map_canvas); map_canvas=NULL; layer_destroy(canvas); canvas=NULL;}
 
 int main(void) {
   hole=persist_exists(1)?persist_read_int(1):1; if (hole<1 || hole>18) hole=1;
