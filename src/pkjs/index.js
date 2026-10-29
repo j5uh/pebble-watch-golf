@@ -2,8 +2,10 @@ var builtIn = require('./course.json');
 var geo = require('./distance');
 // ponytail: local dev server for courses/; point at the hosted course files once chosen.
 var COURSES_URL='https://j5uh.github.io/pebble-watch-golf/';
-var courses={}, catalog=[], courseId='', loading='', loadError='', infoSent='', mapSent='';
+var courses={}, catalog=[], courseId='', loadError='', infoSent='', mapSent='';
+var inflight={}, saveFailed={}, migrated={}, saveQueue=[], queueBusy=false;
 courses[builtIn.id]=builtIn;
+try {for (var i=0;i<localStorage.length;i++) {var k=localStorage.key(i); if (k.indexOf('saveFailed:')===0 && stored(k)) saveFailed[k.slice(11)]=true;}} catch (e) {}
 setCatalog(stored('catalog'));
 var hole=1, units=0, target=100, revision=0;
 var fix=null, watchId=null, active=false, permissionDenied=false;
@@ -13,7 +15,7 @@ var options={enableHighAccuracy:true,maximumAge:0,timeout:15000};
 var MAX_AGE=30000;
 function context() {return {Course:courseId,Hole:hole,Units:units,Revision:revision,LayupTarget:target};}
 function stored(key) {try {return JSON.parse(localStorage.getItem(key));} catch (e) {return null;}}
-function store(key,value) {try {localStorage.setItem(key,JSON.stringify(value));} catch (e) {}}
+function store(key,value) {try {localStorage.setItem(key,JSON.stringify(value)); return true;} catch (e) {return false;}}
 function get(path,ok,fail) {
   var xhr=new XMLHttpRequest();
   xhr.open('GET',COURSES_URL+path); xhr.timeout=15000;
@@ -33,31 +35,80 @@ function setCatalog(list) {
   });
 }
 function usableCourse(c,id) {return c && c.id===id && c.holes && (c.holes.length===9 || c.holes.length===18) && c.tees && c.tees.length>0;}
-// ponytail: keep in-memory courses for this round; a new catalog version applies next launch.
-// Downloaded courses are kept on the phone so play needs no internet afterwards.
-function loadCourse(id) {
-  if (courses[id] || loading===id) return;
-  var cached=stored('course:'+id), version;
+function failedSave(id,failed) {
+  saveFailed[id]=failed;
+  if (failed) store('saveFailed:'+id,true); else remove('saveFailed:'+id);
+}
+function remove(key) {try {localStorage.removeItem(key);} catch (e) {}}
+function versionOf(id) {
+  var version;
   catalog.forEach(function(c) {if (c.id===id) version=c.version;});
+  return version;
+}
+function offlineState(id) {
+  if (id===builtIn.id) return 1;
+  var saved=stored('saved:'+id), c;
+  if (!saved && !migrated[id]) {
+    migrated[id]=true; c=stored('course:'+id);
+    if (usableCourse(c,id)) {
+      saved=c.version || '1';
+      if (!store('saved:'+id,saved)) failedSave(id,true);
+    }
+  }
+  if (saveFailed[id]) return 3;
+  return saved?(versionOf(id) && saved!==versionOf(id)?2:1):0;
+}
+function fetchCourse(id,done) {
+  if (inflight[id]) {inflight[id].push(done); return;}
+  inflight[id]=[done];
+  function finish(c,error) {
+    var callbacks=inflight[id]; delete inflight[id];
+    callbacks.forEach(function(f) {f(c,error);});
+  }
+  get(id+'.json',function(c) {
+    if (!usableCourse(c,id)) {finish(null,'COURSE DATA INVALID'); return;}
+    var saved=store('course:'+id,c);
+    if (saved) saved=store('saved:'+id,c.version || '1');
+    failedSave(id,!saved);
+    if (id===courseId && !courses[id]) courses[id]=c;
+    finish(c);
+  },function() {finish(null,'OFFLINE - RETRYING');});
+}
+function loadCourse(id) {
+  if (courses[id] || inflight[id]) return;
+  var cached=stored('course:'+id), version=versionOf(id);
   if (usableCourse(cached,id) && (!version || cached.version===version)) {courses[id]=cached; return;}
-  function fallback(error) {
-    loading='';
-    if (usableCourse(cached,id)) {courses[id]=cached; loadError='';}
+  fetchCourse(id,function(c,error) {
+    if (id!==courseId) return;
+    if (c) loadError='';
+    else if (usableCourse(cached,id)) {courses[id]=cached; loadError='';}
     else loadError=error;
     publish();
-  }
-  loading=id;
-  get(id+'.json',function(c) {
-    loading='';
-    if (!usableCourse(c,id)) {fallback('COURSE DATA INVALID'); return;}
-    loadError=''; courses[id]=c; store('course:'+id,c); publish();
-  },function() {fallback('OFFLINE - RETRYING');});
+  });
+}
+function saveCourse(id,done) {
+  if (id===builtIn.id) {if (done) done(); return;}
+  fetchCourse(id,function(c) {
+    if (!c) failedSave(id,true);
+    if (id===courseId) {if (c) loadError=''; publish();}
+    if (done) done();
+  });
+}
+function runQueue() {
+  if (queueBusy || !saveQueue.length) return;
+  queueBusy=true;
+  saveCourse(saveQueue.shift(),function() {queueBusy=false; runQueue();});
 }
 function away(meters) {
   var v=units?meters/1000:meters/1609.344;
   return (v<10?v.toFixed(1):Math.round(v))+(units?' KM':' MI');
 }
 // Nearest first once the phone has a position; until then the last course played leads.
+function field(text,limit) {
+  text=String(text).slice(0,limit).replace(/[\uD800-\uDBFF]$/,'');
+  while (text && unescape(encodeURIComponent(text)).length>limit) text=text.slice(0,-1).replace(/[\uD800-\uDBFF]$/,'');
+  return text;
+}
 function courseList() {
   var here=fix?[fix.coords.latitude,fix.coords.longitude]:null, last=stored('last');
   var rows=catalog.map(function(c) {return {c:c,d:here?geo.distance(here,c.center):0};});
@@ -66,7 +117,21 @@ function courseList() {
     if ((a.c.id===last)!==(b.c.id===last)) return a.c.id===last?-1:1;
     return a.c.name<b.c.name?-1:1;
   });
-  return rows.slice(0,12).map(function(r) {return r.c.id+'|'+r.c.name+'|'+(here?away(r.d):'');}).join(';');
+  var saved=rows.filter(function(r) {return r.c.id!==builtIn.id && stored('saved:'+r.c.id);}).slice(0,6);
+  var selected=rows.filter(function(r) {return saved.indexOf(r)>=0 || rows.indexOf(r)<12-saved.length;});
+  for (var i=0;selected.length<12 && i<rows.length;i++) if (selected.indexOf(rows[i])<0) selected.push(rows[i]);
+  selected.sort(function(a,b) {return rows.indexOf(a)-rows.indexOf(b);});
+  function serialize() {
+    return selected.map(function(r) {return field(r.c.id,31)+'|'+field(r.c.name,47)+'|'+(here?away(r.d).slice(0,11):'');}).join(';');
+  }
+  var text=serialize();
+  while (unescape(encodeURIComponent(text)).length>1200 && selected.length) {
+    var drop=selected.length-1;
+    while (drop>=0 && saved.indexOf(selected[drop])>=0) drop--;
+    if (drop<0) break;
+    selected.splice(drop,1); text=serialize();
+  }
+  return text;
 }
 function courseInfo(c) {
   return c.short+'|'+c.holes.map(function(h) {return h.par;}).join('')+'|'+c.tees.map(function(t) {return t.name+':'+t.totalYards;}).join(',');
@@ -111,6 +176,7 @@ function mapPoint(position,m) {
 function publish() {
   var p=context(); p.GpsState=state;
   if (!courseId) {p.CourseList=courseList(); send(p); return;}
+  p.Offline=offlineState(courseId);
   var course=courses[courseId];
   if (!course) {
     if (loadError) p.CourseInfo='!'+loadError;
@@ -194,10 +260,12 @@ Pebble.addEventListener('ready',function() {
 Pebble.addEventListener('appmessage',function(e) {
   var p=e.payload;
   if (p.Course!==undefined && String(p.Course)!==courseId) {
+    if (courseId!==builtIn.id) delete courses[courseId];
     courseId=String(p.Course); infoSent=mapSent=''; loadError='';
     if (courseId) store('last',courseId);
   }
   if (courseId) loadCourse(courseId);
+  if (p.Download===1 && p.Course!==undefined && String(p.Course)===courseId && courseId) saveCourse(courseId);
   if (p.Hole!==undefined) {
     var nextHole=Math.max(1,Math.min(18,Math.floor(Number(p.Hole)||1)));
     if (nextHole!==hole) mapSent='';
@@ -213,4 +281,30 @@ Pebble.addEventListener('appmessage',function(e) {
   if (p.Request===1) refresh(true);
   else if (fixAge()>12000 && !permissionDenied) refresh(false);
   else publish();
+});
+
+Pebble.addEventListener('showConfiguration',function() {
+  var saved={}, failed=[];
+  catalog.forEach(function(c) {offlineState(c.id);});
+  try {
+    for (var i=0;i<localStorage.length;i++) {
+      var key=localStorage.key(i);
+      if (key.indexOf('saved:')===0) {var version=stored(key); if (version) saved[key.slice(6)]=version;}
+    }
+  } catch (e) {}
+  Object.keys(saveFailed).forEach(function(id) {if (saveFailed[id]) failed.push(id);});
+  Pebble.openURL(COURSES_URL+'config.html#'+encodeURIComponent(JSON.stringify({saved:saved,failed:failed,current:courseId,builtIn:builtIn.id})));
+});
+Pebble.addEventListener('webviewclosed',function(e) {
+  var data;
+  try {data=JSON.parse(decodeURIComponent(e.response));} catch (error) {return;}
+  if (!data || typeof data!=='object') return;
+  (Array.isArray(data.remove)?data.remove:[]).forEach(function(id) {
+    if (id===courseId || id===builtIn.id) return;
+    remove('course:'+id); remove('saved:'+id); failedSave(id,false); delete courses[id];
+  });
+  (Array.isArray(data.save)?data.save:[]).forEach(function(id) {
+    if (typeof id==='string' && catalog.some(function(c) {return c.id===id;}) && saveQueue.indexOf(id)<0) saveQueue.push(id);
+  });
+  runQueue(); publish();
 });

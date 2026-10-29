@@ -1,15 +1,15 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'), vm=require('node:vm');
 const course=require('../src/pkjs/course.json');
-function harness() {
-  let now=1000000, next=1, timers=new Map(), watch=[], requests=[], cleared=[], messages=[], handlers={}, xhrs=[], storage={};
+function harness(initial) {
+  let now=1000000, next=1, timers=new Map(), watch=[], requests=[], cleared=[], messages=[], handlers={}, xhrs=[], storage={...initial};
   class XHR {open(m,url){this.url=url;} send(){xhrs.push(this);} reply(status,body){this.status=status;this.responseText=JSON.stringify(body);this.onload();}}
   const sandbox={require:p=>require('../src/pkjs/'+p), Date:{now:()=>now},Math,Number,XMLHttpRequest:XHR,
-    localStorage:{getItem:k=>k in storage?storage[k]:null,setItem:(k,v)=>{storage[k]=String(v);}},
+    localStorage:{getItem:k=>k in storage?storage[k]:null,setItem:(k,v)=>{storage[k]=String(v);},removeItem:k=>{delete storage[k];},key:i=>Object.keys(storage)[i],get length(){return Object.keys(storage).length;}},
     setTimeout:(f,ms)=>{const id=next++;timers.set(id,{f,at:now+ms});return id;},
     clearTimeout:id=>timers.delete(id),
     setInterval:(f,ms)=>{const id=next++;timers.set(id,{f,at:now+ms,ms});return id;},
-    Pebble:{addEventListener:(n,f)=>{handlers[n]=f;},sendAppMessage:(p,ok)=>{messages.push(p);ok();}},
+    Pebble:{openURL:url=>{sandbox.opened=url;},addEventListener:(n,f)=>{handlers[n]=f;},sendAppMessage:(p,ok)=>{messages.push(p);ok();}},
     navigator:{geolocation:{watchPosition:(ok,err)=>{watch.push({ok,err});return watch.length;},
       clearWatch:id=>cleared.push(id),getCurrentPosition:(ok,err,opts)=>{requests.push({ok,err,opts});}}}};
   vm.runInNewContext(fs.readFileSync('src/pkjs/index.js','utf8'),sandbox);
@@ -122,3 +122,55 @@ const n=harness();n.handlers.ready();n.request({Course:'nine',Hole:14});n.xhrs.a
 assert.ok(n.last().CourseInfo.startsWith('MEMORIAL|'+nine.holes.map(h=>h.par).join('')+'|'));
 assert.deepEqual(Array.from(n.last().MapData),[...Buffer.from(nine.holes[8].mapHex,'hex')]);
 console.log('Phone tests passed: 9-hole courses, course cache versions and fallback, delayed map ACKs, GPS recovery, permissions, revisions and delivery retry.');
+
+// Offline readiness, write failures and shared fetches.
+const disk=harness();disk.request({Course:memorial.id});
+disk.sandbox.localStorage.setItem=(k,v)=>{if(k.startsWith('course:'))throw Error('quota');disk.storage[k]=String(v);};
+disk.xhrs[0].reply(200,memorial);
+assert.equal(disk.last().Offline,3);assert.equal(disk.storage['saved:'+memorial.id],undefined);
+assert.ok(disk.sandbox.courses[memorial.id],'storage failure still permits this round');
+const unsaved=harness();unsaved.sandbox.courses[memorial.id]=memorial;unsaved.request({Course:memorial.id});
+assert.equal(unsaved.last().Offline,0,'loaded alone is not saved');
+assert.equal(matching.last().Offline,2,'fresh catalog marks loaded saved data outdated');
+const before=matching.sandbox.courses[memorial.id], info=matching.sandbox.infoSent, map=matching.sandbox.mapSent;
+matching.request({Course:memorial.id,Download:1});const fetching=matching.xhrs.length;
+matching.request({Course:memorial.id,Download:1});assert.equal(matching.xhrs.length,fetching,'duplicate joins fetch');
+const replacement={...memorial,version:'newer',short:'UPDATED'};
+matching.xhrs.at(-1).reply(200,replacement);
+assert.equal(matching.sandbox.courses[memorial.id],before);assert.equal(matching.sandbox.infoSent,info);assert.equal(matching.sandbox.mapSent,map);
+assert.equal(JSON.parse(matching.storage['saved:'+memorial.id]),'newer');assert.equal(matching.last().Offline,1);
+matching.request({Course:memorial.id,Download:1});matching.xhrs.at(-1).onerror();assert.equal(matching.last().Offline,3);
+matching.request({Course:memorial.id,Download:1});matching.xhrs.at(-1).reply(200,replacement);assert.equal(matching.last().Offline,1);
+matching.request({Course:''});assert.equal(matching.sandbox.courses[memorial.id],undefined);
+matching.request({Course:memorial.id});assert.equal(matching.sandbox.courses[memorial.id].short,'UPDATED','next round uses saved update');
+const oldCopy=JSON.stringify({...memorial,version:'old'});
+const safe=harness({'course:memorial-park':oldCopy,'saved:memorial-park':JSON.stringify('old')});
+safe.request({Course:memorial.id});safe.sandbox.localStorage.setItem=()=>{throw Error('quota');};
+safe.request({Course:memorial.id,Download:1});safe.xhrs.at(-1).reply(200,memorial);
+assert.equal(safe.storage['course:memorial-park'],oldCopy);assert.equal(JSON.parse(safe.storage['saved:memorial-park']),'old');assert.equal(safe.last().Offline,3);
+const marker=harness();marker.request({Course:memorial.id});
+marker.sandbox.localStorage.setItem=(k,v)=>{if(k.startsWith('saved:'))throw Error('quota');marker.storage[k]=String(v);};
+marker.xhrs[0].reply(200,memorial);assert.equal(marker.last().Offline,3,'marker failure stays failed in memory');
+const restart=harness({'saveFailed:memorial-park':'true'});restart.request({Course:memorial.id});assert.equal(restart.last().Offline,3,'failure survives restart');
+const migrated=harness({'course:memorial-park':JSON.stringify(memorial)});migrated.request({Course:memorial.id});
+assert.equal(migrated.last().Offline,1);assert.equal(JSON.parse(migrated.storage['saved:memorial-park']),memorial.version);
+// Loading and explicit saving use one fetch; obsolete results never install.
+const joined=harness();joined.request({Course:memorial.id,Download:1});assert.equal(joined.xhrs.length,1);
+joined.request({Course:''});joined.xhrs[0].reply(200,memorial);assert.equal(joined.sandbox.courses[memorial.id],undefined);
+// Configuration queues run sequentially and protected removals are ignored.
+const config=harness();config.handlers.ready();
+config.xhrs[0].reply(200,[memorial,{...memorial,id:'other'}]);config.request();
+config.storage['course:remove']='{}';config.storage['saved:remove']='"1"';config.storage['saved:'+course.id]='"1"';
+config.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({save:[memorial.id,'other'],remove:[course.id,'remove']}))});
+assert.equal(config.xhrs.length,2);assert.equal(config.storage['course:remove'],undefined);assert.ok(config.storage['saved:'+course.id]);
+config.xhrs[1].reply(200,memorial);assert.equal(config.xhrs.length,3);config.xhrs[2].reply(200,{...memorial,id:'other'});
+config.request({Course:memorial.id});config.handlers.webviewclosed({response:JSON.stringify({remove:[memorial.id]})});assert.ok(config.storage['saved:'+memorial.id]);
+config.handlers.showConfiguration();const payload=JSON.parse(decodeURIComponent(config.sandbox.opened.split('#')[1]));
+assert.equal(payload.builtIn,course.id);assert.equal(payload.current,memorial.id);assert.equal(payload.saved[memorial.id],memorial.version);
+// Twelve maximum-length rows fit the wire budget; saved distant courses remain listed.
+const budget=harness(), listings=Array.from({length:12},(_,i)=>({id:String(i).padStart(31,'x'),name:'N'.repeat(47),center:[0,i],version:'1'}));
+budget.handlers.ready();budget.xhrs[0].reply(200,listings);
+listings.slice(6).forEach(c=>budget.storage['saved:'+c.id]='"1"');budget.request({Course:''});budget.requests[0].ok(budget.fix());
+const list=budget.last().CourseList;assert.ok(Buffer.byteLength(list)<=1200);assert.equal(list.split(';').length,12);
+listings.slice(6).forEach(c=>assert.ok(list.includes(c.id)));
+console.log('Offline readiness and configuration tests passed.');

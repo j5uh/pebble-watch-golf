@@ -44,13 +44,16 @@
       "Course",
       "CourseList",
       "CourseInfo",
-      "MapData"
+      "MapData",
+      "Offline",
+      "Download"
     ],
     "resources": {
       "media": []
     },
     "capabilities": [
-      "location"
+      "location",
+      "configurable"
     ]
   }
 }

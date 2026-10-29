@@ -3,7 +3,7 @@ name: Publish courses
 on:
   push:
     branches: [main]
-    paths: [data/**, scripts/import-course.py]
+    paths: [data/**, scripts/import-course.py, config/**]
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/import-course.py
+      - run: cp config/index.html courses/config.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: courses

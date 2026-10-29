@@ -25,6 +25,9 @@ static CourseChoice choices[MAX_COURSES];
 static int choice_count=0, choice_index=0, tee_count=0, tee_yards[MAX_TEES];
 static char course_id[32], course_short[12], course_error[32], pars[19], tee_names[MAX_TEES][9];
 static bool course_ready=false;
+static int offline_state=0;
+static char download_course[32];
+static const char *offline_help[]={"Not saved - select saves","Saved on phone","Update - select saves","Save failed - select retries"};
 typedef struct { char name[24]; int reach, carry; uint32_t osm_id; GPoint near_edge, far_edge; } Hazard;
 static Window *window, *about;
 static TextLayer *credits;
@@ -40,8 +43,8 @@ static GPoint green_front,green_back;
 static bool green_edges_valid=false;
 static bool ready=false, valid=false, round_started=false, phone_connected=true;
 static time_t received=0, last_request=0;
-static const char *menu_names[]={"Refresh GPS","Change tee","Layup distance","Yards / meters","New round","Data credits","Back to play"};
-static const char *menu_help[]={"Request a fresh reading","Choose your tee box","Preferred approach left","Switch distance units","Pick course, tee, hole 1","OpenStreetMap / ODbL","Return to yardages"};
+static const char *menu_names[]={"Refresh GPS","Change tee","Layup distance","Yards / meters","New round","Course data","Data credits","Back to play"};
+static const char *menu_help[]={"Request a fresh reading","Choose your tee box","Preferred approach left","Switch distance units","Pick course, tee, hole 1","Saved on phone","OpenStreetMap / ODbL","Return to yardages"};
 static char heading_text[48], hole_text[48], context_text[48], main_text[48], caption_text[64];
 static char left_text[24], right_text[24], left_cap[32], right_cap[32], status_text[64];
 
@@ -79,7 +82,7 @@ static void render(void) {
     context_text[0]='\0';
     main_font=FONT_KEY_GOTHIC_24_BOLD;
     snprintf(main_text,sizeof(main_text),"Loading course");
-    snprintf(caption_text,sizeof(caption_text),"%s",course_error[0]?course_error:"FROM PHONE");
+    snprintf(caption_text,sizeof(caption_text),course_error[0]?"%s - SELECT":"%s",course_error[0]?course_error:"FROM PHONE");
     snprintf(status_text,sizeof(status_text),"%s",phone_connected?"BACK: COURSES":"PHONE DISCONNECTED");
   } else if (screen==SCREEN_TEES) {
     snprintf(hole_text,sizeof(hole_text),"SELECT TEE BOX");
@@ -91,7 +94,7 @@ static void render(void) {
     snprintf(left_text,sizeof(left_text),"%d,%03d",total/1000,total%1000);
     snprintf(left_cap,sizeof(left_cap),"TOTAL %s",unit);
     snprintf(right_text,sizeof(right_text),"%d",par); snprintf(right_cap,sizeof(right_cap),"PAR / %d HOLES",hole_count);
-    snprintf(status_text,sizeof(status_text),"HOLD SELECT: MENU");
+    snprintf(status_text,sizeof(status_text),"%s",offline_state==1?"HOLD SELECT: MENU":offline_state==2?"UPDATE AVAILABLE":offline_state==3?"SAVE FAILED":"NOT SAVED OFFLINE");
   } else if (screen==SCREEN_TARGET) {
     snprintf(hole_text,sizeof(hole_text),"LAYUP PREFERENCE");
     snprintf(context_text,sizeof(context_text),"UP / DOWN: 25 %s",unit);
@@ -105,9 +108,9 @@ static void render(void) {
     snprintf(main_text,sizeof(main_text),"%s",menu_names[menu_index]);
     // Settings names need room for letters; use 24 rather than the numeric font.
     main_font=FONT_KEY_GOTHIC_24_BOLD;
-    snprintf(caption_text,sizeof(caption_text),"%s",menu_help[menu_index]);
+    snprintf(caption_text,sizeof(caption_text),"%s",menu_index==5?offline_help[offline_state]:menu_help[menu_index]);
     snprintf(left_text,sizeof(left_text),"%d",menu_index+1);
-    snprintf(left_cap,sizeof(left_cap),"OF 7");
+    snprintf(left_cap,sizeof(left_cap),"OF 8");
     snprintf(right_text,sizeof(right_text),"SELECT");
     snprintf(right_cap,sizeof(right_cap),"TO OPEN");
     snprintf(status_text,sizeof(status_text),"BACK TO RETURN");
@@ -143,7 +146,7 @@ static void render(void) {
   if (hazard_canvas) {layer_set_hidden(hazard_canvas,!(screen==SCREEN_PLAY && (page==1 || page==2))); layer_mark_dirty(hazard_canvas);}
   if (map_canvas) {layer_set_hidden(map_canvas,!(screen==SCREEN_PLAY && page==3)); layer_mark_dirty(map_canvas);}
 }
-static bool resend=false, resend_fresh=false, inflight_fresh=false;
+static bool resend=false, resend_fresh=false, inflight_fresh=false, inflight_download=false;
 static AppTimer *retry_timer=NULL;
 static void request(bool fresh);
 static void retry_request(void *data) {
@@ -159,6 +162,8 @@ static void schedule_retry(bool fresh) {
   if (!retry_timer) retry_timer=app_timer_register(2000,retry_request,NULL);
 }
 static void sent(DictionaryIterator *iter,void *context) {
+  if (inflight_download) download_course[0]='\0';
+  inflight_download=false;
   if (resend) {
     if (retry_timer) app_timer_cancel(retry_timer);
     retry_request(NULL);
@@ -173,8 +178,10 @@ static void request(bool fresh) {
   dict_write_int32(iter,MESSAGE_KEY_Hole,hole); dict_write_int32(iter,MESSAGE_KEY_Units,units);
   dict_write_int32(iter,MESSAGE_KEY_LayupTarget,target); dict_write_int32(iter,MESSAGE_KEY_Revision,revision);
   dict_write_int32(iter,MESSAGE_KEY_Request,fresh?1:0);
+  bool download=download_course[0] && !strcmp(download_course,course_id);
+  if (download) dict_write_int32(iter,MESSAGE_KEY_Download,1);
   if (app_message_outbox_send()!=APP_MSG_OK) {schedule_retry(fresh); return;}
-  inflight_fresh=fresh; last_request=time(NULL);
+  inflight_download=download; inflight_fresh=fresh; last_request=time(NULL);
 }
 static int integer(DictionaryIterator *iter,uint32_t key,int fallback) {
   Tuple *t=dict_find(iter,key); return t?t->value->int32:fallback;
@@ -225,7 +232,7 @@ static bool parse_info(const char *text) {
 // "id|name|distance;..." nearest first; keep the highlighted course if it is still listed.
 static void parse_courses(const char *text) {
   char selected[32]; snprintf(selected,sizeof(selected),"%s",choice_count?choices[choice_index].id:"");
-  static char buffer[1024]; snprintf(buffer,sizeof(buffer),"%s",text);
+  static char buffer[1280]; snprintf(buffer,sizeof(buffer),"%s",text);
   choice_count=0; choice_index=0;
   for (char *row=buffer;row && *row && choice_count<MAX_COURSES;) {
     char *next=strchr(row,';'); if (next) *next++='\0';
@@ -260,6 +267,8 @@ static void inbox(DictionaryIterator *iter,void *context) {
   Tuple *list=dict_find(iter,MESSAGE_KEY_CourseList), *course=dict_find(iter,MESSAGE_KEY_Course);
   if (list) {if (screen==SCREEN_COURSES) parse_courses(list->value->cstring); render(); return;}
   if (!course_id[0] || !course || strcmp(course->value->cstring,course_id)) return;
+  offline_state=integer(iter,MESSAGE_KEY_Offline,offline_state);
+  if (offline_state<0 || offline_state>3) offline_state=0;
   // Course details and maps apply whatever the revision; distances must match it.
   Tuple *info_tuple=dict_find(iter,MESSAGE_KEY_CourseInfo), *map=dict_find(iter,MESSAGE_KEY_MapData);
   const char *info=info_tuple?info_tuple->value->cstring:NULL;
@@ -301,12 +310,12 @@ static void tick(struct tm *now,TimeUnits changed) {
 }
 static void invalidate(void) {revision++; valid=false; hazard_count=0; hazard_index=0;}
 // Reopening the list starts from the top: nearest first, or last played without GPS.
-static void choose_course(void) {course_id[0]='\0'; course_ready=false; map_hole=0; choice_count=0; screen=SCREEN_COURSES; request(true);}
+static void choose_course(void) {download_course[0]='\0'; offline_state=0; course_id[0]='\0'; course_ready=false; map_hole=0; choice_count=0; screen=SCREEN_COURSES; request(true);}
 static void change(int delta) {
   if (screen==SCREEN_COURSES) {if (choice_count) choice_index=(choice_index+delta+choice_count)%choice_count;}
   else if (screen==SCREEN_TEES) {if (tee_count) tee=(tee+delta+tee_count)%tee_count;}
   else if (screen==SCREEN_TARGET) {target+=delta*25; if (target<50) target=200; if (target>200) target=50;}
-  else if (screen==SCREEN_MENU) menu_index=(menu_index+delta+7)%7;
+  else if (screen==SCREEN_MENU) menu_index=(menu_index+delta+8)%8;
   else {hole=(hole-1+delta+hole_count)%hole_count+1; persist_write_int(1,hole); invalidate(); request(false);}
   render();
 }
@@ -315,10 +324,11 @@ static void down(ClickRecognizerRef r,void *c) {change(1);}
 static void select_click(ClickRecognizerRef r,void *c) {
   if (screen==SCREEN_COURSES) {
     if (!choice_count) return;
+    download_course[0]='\0'; offline_state=0;
     snprintf(course_id,sizeof(course_id),"%s",choices[choice_index].id); persist_write_string(6,course_id);
     course_ready=false; course_error[0]='\0'; map_hole=0; screen=SCREEN_TEES; request(true);
   } else if (screen==SCREEN_TEES) {
-    if (!course_ready) return;
+    if (!course_ready) {if (course_error[0]) {snprintf(download_course,sizeof(download_course),"%s",course_id); request(false);} return;}
     persist_write_int(3,tee);
     if (!round_started) {hole=1; persist_write_int(1,hole);}
     round_started=true; persist_write_bool(5,true); screen=SCREEN_PLAY; invalidate(); request(true);
@@ -331,7 +341,8 @@ static void select_click(ClickRecognizerRef r,void *c) {
       case 2: screen=SCREEN_TARGET; break;
       case 3: units=!units; persist_write_int(2,units); invalidate(); screen=home(); request(false); break;
       case 4: round_started=false; persist_write_bool(5,false); valid=false; page=0; choose_course(); break;
-      case 5: window_stack_push(about,true); break;
+      case 5: snprintf(download_course,sizeof(download_course),"%s",course_id); request(false); break;
+      case 6: window_stack_push(about,true); break;
       default: screen=home(); break;
     }
   } else if (page==0) {page=1; hazard_index=0;}
