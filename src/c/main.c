@@ -1,10 +1,12 @@
 #include <pebble.h>
+#ifndef PBL_ROUND
+#define MAP_W 200
+#define MAP_H 168
+#endif
 #include "map-camera.h"
 #include "hazard-leaders.h"
 
 #define MAX_HAZARDS 8
-// The hazard view fills the gap between the hole heading (ends y=77) and the legend (y=211).
-#define HAZARD_H 132
 #define MAX_FIX_AGE 30
 // The phone sends one hole map at a time; scripts/import-course.py checks these limits.
 #define MAX_POINTS 800
@@ -13,6 +15,76 @@
 // Matches the phone's rows.slice(0,12) in courseList().
 #define MAX_COURSES 12
 #define COURSE_ROWS 5
+typedef struct {
+  GRect heading, status, hole, hole_map, context, legend;
+  GRect map, hazard;
+  GRect g_main, g_caption, g_left, g_right, g_left_cap, g_right_cap, g_layup;
+  GRect main, caption, left, right, left_cap, right_cap;
+  int16_t row_y, row_h;
+  GRect row_hl, row_text, credits;
+  int16_t hz_cx, hz_clip_l, hz_clip_r, hz_draw_w;
+  int16_t hz_lead_l_min, hz_lead_l_max, hz_lead_r_min, hz_lead_r_max;
+  int16_t hz_green_l_min, hz_green_l_max, hz_green_r_min, hz_green_r_max;
+} Layout;
+#ifdef PBL_ROUND
+static const Layout L = {
+  .heading = {{0,0},{260,24}},
+  .status = {{0,0},{260,18}},
+  .hole = {{22,47},{216,30}},
+  .hole_map = {{22,36},{216,22}},
+  .context = {{20,77},{220,18}},
+  .legend = {{24,211},{212,17}},
+  .map = {{50,60},{160,172}},
+  .hazard = {{18,78},{224,132}},
+  .g_main = {{80,92},{100,52}},
+  .g_caption = {{80,146},{100,18}},
+  .g_left = {{18,113},{60,32}},
+  .g_right = {{182,113},{60,32}},
+  .g_left_cap = {{18,146},{60,18}},
+  .g_right_cap = {{182,146},{60,18}},
+  .g_layup = {{22,77},{216,18}},
+  .main = {{15,94},{230,59}},
+  .caption = {{15,151},{230,22}},
+  .left = {{32,172},{94,34}},
+  .right = {{134,172},{94,34}},
+  .left_cap = {{28,203},{102,18}},
+  .right_cap = {{130,203},{102,18}},
+  .row_y=96, .row_h=25,
+  .row_hl={{37,0},{186,25}}, .row_text={{41,0},{178,24}}, .credits={{30,45},{200,180}},
+  .hz_cx=112, .hz_clip_l=60, .hz_clip_r=164, .hz_draw_w=96,
+  .hz_lead_l_min=52, .hz_lead_l_max=66, .hz_lead_r_min=158, .hz_lead_r_max=172,
+  .hz_green_l_min=44, .hz_green_l_max=62, .hz_green_r_min=162, .hz_green_r_max=180
+};
+#else
+static const Layout L = {
+  .heading = {{0,-2},{200,22}},
+  .status = {{0,208},{200,20}},
+  .hole = {{0,16},{200,30}},
+  .hole_map = {{0,16},{200,22}},
+  .context = {{0,46},{200,18}},
+  .legend = {{0,190},{200,18}},
+  .map = {{0,40},{200,168}},
+  .hazard = {{0,46},{200,144}},
+  .g_main = {{0,62},{200,52}},
+  .g_caption = {{0,112},{200,18}},
+  .g_left = {{4,134},{94,32}},
+  .g_right = {{102,134},{94,32}},
+  .g_left_cap = {{4,166},{94,18}},
+  .g_right_cap = {{102,166},{94,18}},
+  .g_layup = {{0,46},{200,18}},
+  .main = {{4,64},{192,59}},
+  .caption = {{4,120},{192,22}},
+  .left = {{4,142},{94,34}},
+  .right = {{102,142},{94,34}},
+  .left_cap = {{4,174},{94,18}},
+  .right_cap = {{102,174},{94,18}},
+  .row_y=66, .row_h=25,
+  .row_hl={{4,0},{192,25}}, .row_text={{8,0},{184,24}}, .credits={{0,24},{200,180}},
+  .hz_cx=100, .hz_clip_l=54, .hz_clip_r=146, .hz_draw_w=92,
+  .hz_lead_l_min=52, .hz_lead_l_max=54, .hz_lead_r_min=146, .hz_lead_r_max=148,
+  .hz_green_l_min=42, .hz_green_l_max=54, .hz_green_r_min=146, .hz_green_r_max=158
+};
+#endif
 typedef enum { SCREEN_COURSES, SCREEN_TEES, SCREEN_PLAY, SCREEN_MENU, SCREEN_TARGET } Screen;
 typedef struct { uint16_t start, count; uint8_t kind; uint32_t osm_id; } MapShape;
 typedef struct { uint16_t start, count; GPoint tee, green; } HoleMap;
@@ -364,10 +436,11 @@ static void clicks(void *c) {
   window_single_click_subscribe(BUTTON_ID_SELECT,select_click); window_single_click_subscribe(BUTTON_ID_BACK,back_click);
   window_long_click_subscribe(BUTTON_ID_SELECT,700,settings,NULL);
 }
-static void draw_text(GContext *ctx,const char *value,int x,int y,int width,int height,const char *font,GColor color) {
+static void draw_text(GContext *ctx,const char *value,GRect rect,const char *font,GColor color) {
   graphics_context_set_text_color(ctx,color);
-  graphics_draw_text(ctx,value,fonts_get_system_font(font),GRect(x,y,width,height),GTextOverflowModeTrailingEllipsis,GTextAlignmentCenter,NULL);
+  graphics_draw_text(ctx,value,fonts_get_system_font(font),rect,GTextOverflowModeTrailingEllipsis,GTextAlignmentCenter,NULL);
 }
+#ifdef PBL_ROUND
 // Cache system-font glyphs once per string, then place their centers on the rim.
 // Glyphs are captured through the frame buffer, so cache before drawing anything else.
 typedef struct {GBitmap *glyphs[64]; int widths[64], count, width, height; uint8_t color; char text[64];} CurvedText;
@@ -426,6 +499,18 @@ static void draw_heading(GContext *ctx) {draw_curve(ctx,&heading_curve,112,12,fa
 // Its own top layer, so the map and hazard views never cover the rim text.
 // The bottom arc clears the layup line for about 18 characters; keep status strings that short.
 static void draw_status(Layer *layer,GContext *ctx) {draw_curve(ctx,&status_curve,116,9,true);}
+#else
+static const char *fit_font(const char *text,const char *big,const char *small) {
+  GSize size=graphics_text_layout_get_content_size(text,fonts_get_system_font(big),GRect(0,0,1000,40),GTextOverflowModeFill,GTextAlignmentLeft);
+  return size.w<=196?big:small;
+}
+static void draw_heading(GContext *ctx) {
+  draw_text(ctx,heading_text,L.heading,fit_font(heading_text,FONT_KEY_GOTHIC_18_BOLD,FONT_KEY_GOTHIC_14_BOLD),GColorDarkGreen);
+}
+static void draw_status(Layer *layer,GContext *ctx) {
+  draw_text(ctx,status_text,L.status,fit_font(status_text,FONT_KEY_GOTHIC_14_BOLD,FONT_KEY_GOTHIC_14),status_color);
+}
+#endif
 static GPoint map_xy(int px,int py,MapCamera c) {
   float x=(px-c.x)*c.zoom/16+MAP_W/2, y=(py-c.y)*c.zoom/16+MAP_H/2;
   // Limit distant geometry to the representable range before viewport clipping.
@@ -527,7 +612,7 @@ static GPoint map_edge(GPoint from,GPoint to) {
 }
 static void draw_map(Layer *layer,GContext *ctx) {
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
-  if (map_hole!=hole) {draw_text(ctx,"Loading map",0,MAP_H/2-14,MAP_W,28,FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
+  if (map_hole!=hole) {draw_text(ctx,"Loading map",GRect(0,MAP_H/2-14,L.map.size.w,28),FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
   const HoleMap *map=&hole_map; bool near; MapCamera camera=camera_for_hole(map,&near);
   // Layer fairway, cutouts, tees, dashed route, hazards, then green for a clear visual hierarchy.
   for (int pass=0;pass<6;pass++) {
@@ -586,7 +671,7 @@ static void draw_map(Layer *layer,GContext *ctx) {
   GRect box=GRect((int)camera_max(0,camera_min(MAP_W-30,mid.x-15)),(int)camera_max(0,camera_min(MAP_H-15,mid.y-7)),30,15);
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,box,3,GCornersAll);
   graphics_context_set_stroke_color(ctx,GColorCobaltBlue); graphics_context_set_stroke_width(ctx,1); graphics_draw_round_rect(ctx,box,3);
-  draw_text(ctx,distance,box.origin.x,box.origin.y-3,30,18,FONT_KEY_GOTHIC_14_BOLD,GColorCobaltBlue);
+  draw_text(ctx,distance,GRect(box.origin.x,box.origin.y-3,30,18),FONT_KEY_GOTHIC_14_BOLD,GColorCobaltBlue);
   if (shown) {
     graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_circle(ctx,player,8);
     graphics_context_set_stroke_color(ctx,GColorBlack); graphics_context_set_stroke_width(ctx,1); graphics_draw_circle(ctx,player,7);
@@ -605,11 +690,11 @@ static void draw_map(Layer *layer,GContext *ctx) {
   GPoint you=GPoint(end.x-ux*18/10,end.y-uy*18/10);
   GRect tag=GRect((int)camera_max(0,camera_min(MAP_W-24,you.x-12)),(int)camera_max(0,camera_min(MAP_H-14,you.y-7)),24,14);
   graphics_context_set_fill_color(ctx,GColorMagenta); graphics_fill_rect(ctx,tag,3,GCornersAll);
-  draw_text(ctx,"YOU",tag.origin.x,tag.origin.y-3,24,16,FONT_KEY_GOTHIC_14_BOLD,GColorWhite);
+  draw_text(ctx,"YOU",GRect(tag.origin.x,tag.origin.y-3,24,16),FONT_KEY_GOTHIC_14_BOLD,GColorWhite);
 }
 
 static GPoint hazard_preview_point(GPoint p,float scale,float cx,float cy) {
-  return GPoint((int)camera_max(-10000,camera_min(10000,(p.x-cx)*scale+112)),(int)camera_max(-10000,camera_min(10000,(p.y-cy)*scale+HAZARD_H/2)));
+  return GPoint((int)camera_max(-10000,camera_min(10000,(p.x-cx)*scale+L.hz_cx)),(int)camera_max(-10000,camera_min(10000,(p.y-cy)*scale+L.hazard.size.h/2)));
 }
 typedef struct {const MapShape *shape; const Hazard *reading; GPoint center,near_edge,far_edge; int side;} HazardCallout;
 // Greenside frames hazards centred within one green-width of the green; the hazard view
@@ -654,7 +739,7 @@ static bool hazards_redundant(void) {
 }
 static void draw_hazard_image(Layer *layer,GContext *ctx) {
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
-  if (map_hole!=hole) {draw_text(ctx,"Loading map",0,38,224,28,FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
+  if (map_hole!=hole) {draw_text(ctx,"Loading map",GRect(0,38,L.hazard.size.w,28),FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
   const HoleMap *map=&hole_map;
   int zone[4],*greenside=page==2?zone:NULL; greenside_zone(zone);
   int minx=32767,miny=32767,maxx=-32768,maxy=-32768, feature_count=0;
@@ -670,8 +755,8 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
       if (p.y>maxy) maxy=p.y;
     }
   }
-  if (!feature_count && !greenside) {draw_text(ctx,usable()?"No hazards ahead":"No mapped hazards",0,38,224,28,FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
-  float scale=camera_min(96/camera_max(1,maxx-minx),(HAZARD_H-24)/camera_max(1,maxy-miny));
+  if (!feature_count && !greenside) {draw_text(ctx,usable()?"No hazards ahead":"No mapped hazards",GRect(0,38,L.hazard.size.w,28),FONT_KEY_GOTHIC_18,GColorDarkGray); return;}
+  float scale=camera_min(L.hz_draw_w/camera_max(1,maxx-minx),(L.hazard.size.h-24)/camera_max(1,maxy-miny));
   float cx=(minx+maxx)/2.0f,cy=(miny+maxy)/2.0f;
   HazardCallout callouts[MAX_HAZARDS]; int count=0;
   GPoint green=hazard_preview_point(map->green,scale,cx,cy);
@@ -690,7 +775,7 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
         c->near_edge=c->reading?hazard_preview_point(c->reading->near_edge,scale,cx,cy):c->center;
         c->far_edge=c->reading?hazard_preview_point(c->reading->far_edge,scale,cx,cy):c->center;
       }
-      int clipped_count=0; GPoint *clipped=map_clip_polygon(points,shape->count,60,0,164,HAZARD_H-1,&clipped_count);
+      int clipped_count=0; GPoint *clipped=map_clip_polygon(points,shape->count,L.hz_clip_l,0,L.hz_clip_r,L.hazard.size.h-1,&clipped_count);
       free(points); points=clipped;
       if (!points || clipped_count<3) {free(points); continue;}
       GPathInfo info={.num_points=clipped_count,.points=points}; GPath *path=gpath_create(&info);
@@ -713,14 +798,14 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
     HazardCallout *c=&callouts[i]; int side=c->side,slot=side_index[side]++;
     bool has_reading=usable() && c->reading;
     GPoint near=has_reading?c->near_edge:c->center,far=has_reading?c->far_edge:c->center;
-    int offset=side==green_side?44:0,available=HAZARD_H-offset;
+    int offset=side==green_side?44:0,available=L.hazard.size.h-offset;
     int slot_start=offset+slot*available/side_count[side],slot_end=offset+(slot+1)*available/side_count[side];
     int top=(near.y+far.y)/2-14;
     if (top<slot_start) top=slot_start;
     if (top>slot_end-28) top=slot_end-28;
     // Labels are 50px wide ("BUNKER", "309-318"), so leaders stop short of the canvas edges.
-    int leader_x=side?(int)camera_max(158,camera_min(172,(near.x>far.x?near.x:far.x)+7)):
-      (int)camera_min(66,camera_max(52,(near.x<far.x?near.x:far.x)-7));
+    int leader_x=side?(int)camera_max(L.hz_lead_r_min,camera_min(L.hz_lead_r_max,(near.x>far.x?near.x:far.x)+7)):
+      (int)camera_min(L.hz_lead_l_max,camera_max(L.hz_lead_l_min,(near.x<far.x?near.x:far.x)-7));
     // One leader per hazard to its centroid; type above, reach-carry range below.
     graphics_context_set_stroke_width(ctx,1);
     GColor tone=c->shape->kind==2?GColorWindsorTan:GColorDukeBlue;
@@ -740,7 +825,7 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
   GPoint b=green_edges_valid?hazard_preview_point(green_back,scale,cx,cy):green;
   int min_green_x=f.x<green.x?f.x:green.x;if(b.x<min_green_x)min_green_x=b.x;
   int max_green_x=f.x>green.x?f.x:green.x;if(b.x>max_green_x)max_green_x=b.x;
-  int label_x=green_side?(int)camera_max(162,camera_min(180,max_green_x+7)):(int)camera_min(62,camera_max(44,min_green_x-7));
+  int label_x=green_side?(int)camera_max(L.hz_green_r_min,camera_min(L.hz_green_r_max,max_green_x+7)):(int)camera_min(L.hz_green_l_max,camera_max(L.hz_green_l_min,min_green_x-7));
   GreenLeaderPlan plan=green_leader_plan((LeaderPoint){f.x,f.y},(LeaderPoint){green.x,green.y},(LeaderPoint){b.x,b.y},label_x,7);
   GPoint anchors[3]={f,green,b};int label_y[3]={plan.front_y,plan.middle_y,plan.back_y};int readings[3]={front,middle,back};
   const char *prefix[3]={"F","M","B"};
@@ -758,18 +843,21 @@ static void draw_hazard_image(Layer *layer,GContext *ctx) {
 
 static void draw(Layer *layer,GContext *ctx) {
   graphics_context_set_fill_color(ctx,GColorWhite); graphics_fill_rect(ctx,layer_get_bounds(layer),0,GCornerNone);
+
+#ifdef PBL_ROUND
   cache_curve(ctx,&heading_curve,heading_text,FONT_KEY_GOTHIC_18_BOLD,24,GColorDarkGreen);
   cache_curve(ctx,&status_curve,status_text,FONT_KEY_GOTHIC_14_BOLD,18,status_color);
+#endif
   if (screen==SCREEN_PLAY && page==3) {
     draw_heading(ctx);
-    draw_text(ctx,hole_text,22,36,216,22,FONT_KEY_GOTHIC_18_BOLD,GColorDarkGreen);
+    draw_text(ctx,hole_text,L.hole_map,FONT_KEY_GOTHIC_18_BOLD,GColorDarkGreen);
     return;
   }
   draw_heading(ctx);
-  draw_text(ctx,hole_text,22,47,216,30,FONT_KEY_GOTHIC_24_BOLD,GColorDarkGreen);
-  if (!(screen==SCREEN_PLAY && (page==1 || page==2))) draw_text(ctx,context_text,20,77,220,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+  draw_text(ctx,hole_text,L.hole,FONT_KEY_GOTHIC_24_BOLD,GColorDarkGreen);
+  if (!(screen==SCREEN_PLAY && (page==1 || page==2))) draw_text(ctx,context_text,L.context,FONT_KEY_GOTHIC_14,GColorDarkGray);
   if (screen==SCREEN_PLAY && (page==1 || page==2)) {
-    draw_text(ctx,units?"REACH - CARRY (M)":"REACH - CARRY (YD)",24,211,212,17,FONT_KEY_GOTHIC_14,GColorDarkGreen);
+    draw_text(ctx,units?"REACH - CARRY (M)":"REACH - CARRY (YD)",L.legend,FONT_KEY_GOTHIC_14,GColorDarkGreen);
     return;
   }
   if (screen==SCREEN_COURSES && choice_count) {
@@ -779,43 +867,49 @@ static void draw(Layer *layer,GContext *ctx) {
     if (first>choice_count-COURSE_ROWS) first=choice_count-COURSE_ROWS;
     if (first<0) first=0;
     for (int i=first;i<choice_count && i<first+COURSE_ROWS;i++) {
-      int y=96+25*(i-first); bool on=i==choice_index;
-      if (on) {graphics_context_set_fill_color(ctx,GColorCobaltBlue); graphics_fill_rect(ctx,GRect(37,y,186,25),6,GCornersAll);}
-      draw_text(ctx,choices[i].name,41,y,178,24,FONT_KEY_GOTHIC_18_BOLD,on?GColorWhite:GColorCobaltBlue);
+      int y=L.row_y+L.row_h*(i-first); bool on=i==choice_index;
+      GRect row_hl=L.row_hl, row_text=L.row_text;
+      row_hl.origin.y+=y; row_text.origin.y+=y;
+      if (on) {graphics_context_set_fill_color(ctx,GColorCobaltBlue); graphics_fill_rect(ctx,row_hl,6,GCornersAll);}
+      draw_text(ctx,choices[i].name,row_text,FONT_KEY_GOTHIC_18_BOLD,on?GColorWhite:GColorCobaltBlue);
     }
     return;
   }
   if (screen==SCREEN_PLAY && page==0) {
-    draw_text(ctx,main_text,80,92,100,52,strlen(main_text)>3 || main_text[0]=='-'?FONT_KEY_GOTHIC_28_BOLD:main_font,GColorCobaltBlue);
-    draw_text(ctx,caption_text,80,146,100,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
-    draw_text(ctx,left_text,18,113,60,32,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
-    draw_text(ctx,right_text,182,113,60,32,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
-    draw_text(ctx,left_cap,18,146,60,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
-    draw_text(ctx,right_cap,182,146,60,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+    draw_text(ctx,main_text,L.g_main,strlen(main_text)>3 || main_text[0]=='-'?FONT_KEY_GOTHIC_28_BOLD:main_font,GColorCobaltBlue);
+    draw_text(ctx,caption_text,L.g_caption,FONT_KEY_GOTHIC_14,GColorDarkGray);
+    draw_text(ctx,left_text,L.g_left,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
+    draw_text(ctx,right_text,L.g_right,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
+    draw_text(ctx,left_cap,L.g_left_cap,FONT_KEY_GOTHIC_14,GColorDarkGray);
+    draw_text(ctx,right_cap,L.g_right_cap,FONT_KEY_GOTHIC_14,GColorDarkGray);
     char layup[48],shot[16]; number(shot,sizeof(shot),layup_shot,usable());
     if (usable() && layup_shot<0) snprintf(layup,sizeof(layup),"NO FORWARD LAYUP TARGET");
     else snprintf(layup,sizeof(layup),"LAYUP: HIT %s / LEAVE %d",shot,target);
-    if (pars[hole-1]-'0'!=3) draw_text(ctx,layup,22,77,216,18,FONT_KEY_GOTHIC_14_BOLD,GColorDarkGreen);
+    if (pars[hole-1]-'0'!=3) draw_text(ctx,layup,L.g_layup,FONT_KEY_GOTHIC_14_BOLD,GColorDarkGreen);
     return;
   }
-  draw_text(ctx,main_text,15,94,230,59,main_font,GColorCobaltBlue);
-  draw_text(ctx,caption_text,15,151,230,22,FONT_KEY_GOTHIC_14,GColorDarkGreen);
-  draw_text(ctx,left_text,32,172,94,34,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
-  draw_text(ctx,right_text,134,172,94,34,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
-  draw_text(ctx,left_cap,28,203,102,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
-  draw_text(ctx,right_cap,130,203,102,18,FONT_KEY_GOTHIC_14,GColorDarkGray);
+  draw_text(ctx,main_text,L.main,main_font,GColorCobaltBlue);
+  draw_text(ctx,caption_text,L.caption,FONT_KEY_GOTHIC_14,GColorDarkGreen);
+  draw_text(ctx,left_text,L.left,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
+  draw_text(ctx,right_text,L.right,FONT_KEY_GOTHIC_28_BOLD,GColorCobaltBlue);
+  draw_text(ctx,left_cap,L.left_cap,FONT_KEY_GOTHIC_14,GColorDarkGray);
+  draw_text(ctx,right_cap,L.right_cap,FONT_KEY_GOTHIC_14,GColorDarkGray);
 }
 static void load(Window *w) {
   canvas=layer_create(layer_get_bounds(window_get_root_layer(w)));
   layer_set_update_proc(canvas,draw); layer_add_child(window_get_root_layer(w),canvas);
-  map_canvas=layer_create(GRect((260-MAP_W)/2,60,MAP_W,MAP_H)); layer_set_update_proc(map_canvas,draw_map);
+  map_canvas=layer_create(L.map); layer_set_update_proc(map_canvas,draw_map);
   layer_add_child(canvas,map_canvas);
-  hazard_canvas=layer_create(GRect(18,78,224,HAZARD_H)); layer_set_update_proc(hazard_canvas,draw_hazard_image);
+  hazard_canvas=layer_create(L.hazard); layer_set_update_proc(hazard_canvas,draw_hazard_image);
   layer_add_child(canvas,hazard_canvas);
   status_canvas=layer_create(layer_get_bounds(canvas)); layer_set_update_proc(status_canvas,draw_status);
   layer_add_child(canvas,status_canvas); render();
 }
-static void unload(Window *w) {clear_curve(&heading_curve); clear_curve(&status_curve); layer_destroy(status_canvas); status_canvas=NULL; layer_destroy(hazard_canvas); hazard_canvas=NULL; layer_destroy(map_canvas); map_canvas=NULL; layer_destroy(canvas); canvas=NULL;}
+static void unload(Window *w) {
+#ifdef PBL_ROUND
+  clear_curve(&heading_curve); clear_curve(&status_curve);
+#endif
+  layer_destroy(status_canvas); status_canvas=NULL; layer_destroy(hazard_canvas); hazard_canvas=NULL; layer_destroy(map_canvas); map_canvas=NULL; layer_destroy(canvas); canvas=NULL;}
 
 int main(void) {
   hole=persist_exists(1)?persist_read_int(1):1; if (hole<1 || hole>18) hole=1;
@@ -834,7 +928,7 @@ int main(void) {
   app_message_register_inbox_received(inbox); app_message_register_outbox_failed(failed); app_message_register_outbox_sent(sent); app_message_open(5120,256);
   tick_timer_service_subscribe(SECOND_UNIT,tick);
   connection_service_subscribe((ConnectionHandlers){.pebble_app_connection_handler=connection});
-  about=window_create(); credits=text_layer_create(GRect(30,45,200,180));
+  about=window_create(); credits=text_layer_create(L.credits);
   text_layer_set_font(credits,fonts_get_system_font(FONT_KEY_GOTHIC_18)); text_layer_set_text_alignment(credits,GTextAlignmentCenter);
   text_layer_set_text(credits,"Course data\n© OpenStreetMap\ncontributors\nODbL 1.0\nopenstreetmap.org/\ncopyright");
   layer_add_child(window_get_root_layer(about),text_layer_get_layer(credits));

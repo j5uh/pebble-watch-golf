@@ -1,6 +1,6 @@
 # Pebble Golf
 
-Work in this directory. This is a native C watchapp for Pebble Round 2 (`gabbro`), with PebbleKit JS on the paired phone. It does not use Alloy.
+Work in this directory. This is a native C watchapp for Pebble Round 2 (`gabbro`, 260x260 round) and Pebble Time 2 (`emery`, 200x228 rectangular), with PebbleKit JS on the paired phone. It does not use Alloy.
 
 ## Project layout
 
@@ -14,7 +14,7 @@ Work in this directory. This is a native C watchapp for Pebble Round 2 (`gabbro`
 
 ## Build and validation
 
-Use SDK 4.33.1 and target `gabbro`:
+Use SDK 4.33.1 and targets `gabbro` and `emery` in one PBW:
 
 ```sh
 pebble build --sdk 4.33.1
@@ -30,11 +30,13 @@ node tests/distance.test.js
 node tests/phone.test.js
 cc -Wall -Wextra -Werror tests/map-camera-test.c -lm -o /tmp/pebble-map-camera-test
 /tmp/pebble-map-camera-test
+cc -Wall -Wextra -Werror -DMAP_W=200 -DMAP_H=168 tests/map-camera-test.c -lm -o /tmp/pebble-map-camera-emery-test
+/tmp/pebble-map-camera-emery-test
 cc -Wall -Wextra -Werror tests/hazard-leaders-test.c -lm -o /tmp/pebble-hazard-leaders-test
 /tmp/pebble-hazard-leaders-test
 ```
 
-Distance tests cover green/hazard geometry and layup math. Phone tests cover GPS recovery, fix age, permissions, revisions, and delivery retry. Host C tests cover map zoom/framing and non-crossing hazard labels. Build after watch changes, and visually inspect UI changes on the round emulator.
+Distance tests cover green/hazard geometry and layup math. Phone tests cover GPS recovery, fix age, permissions, revisions, and delivery retry. Host C tests cover map zoom/framing and non-crossing hazard labels. Build after watch changes, and visually inspect UI changes on both emulators (`--emulator gabbro` and `--emulator emery`).
 
 SDK documentation: https://developer.repebble.com/llms.txt.
 
@@ -44,8 +46,9 @@ SDK documentation: https://developer.repebble.com/llms.txt.
 - Hole selection remains manual. Automatic hole detection and pin placement are explicitly excluded.
 - Phone GPS is mandatory for live distances; never imply independent watch GPS.
 - Keep stale or disconnected measurements clearly unavailable, and simulated GPS explicitly labeled.
-- Use the circular display area. Course name and view label follow the upper curvature; center the complete measured string together, including spaces and separators, for every view.
-- Keep labels and values inside the circular boundary and check the longest heading when changing layout.
+- Use each native display area. On round, course name and view label follow the upper curvature; center the complete measured string together, including spaces and separators, for every view. Rect uses straight heading and status text with measured font fallback.
+- The compile-time `Layout` struct in `src/c/main.c` is the single place for screen geometry. Preserve the round layout when changing rect geometry.
+- Keep labels and values inside the display boundary and check the longest heading on both shapes when changing layout.
 - Map geometry uses 1/16 overview-pixel coordinates in both the phone-sent hole map (`mapHex`) and the phone marker protocol. Keep the importer, `parse_map` in `main.c`, and `MAX_POINTS`/`MAX_SHAPES` consistent.
 - Course selection is manual from a nearest-first list; never pick a course automatically.
 - Preserve OSM provenance and attribution. Static map targets and green centroids are not today's pin position.
@@ -66,7 +69,7 @@ cd courses && python3 -m http.server 8879 --bind 127.0.0.1
 
 The local browser viewer is configured at http://127.0.0.1:8878/. Its temporary server lives in `/tmp/pebble-golf-viewer` and connects to the SDK VNC/WebSocket display. These temporary files may need to be recreated in a new session.
 
-While using the viewer, pass `--vnc` on every `pebble --emulator gabbro` operation; switching to SDL stops the browser display.
+While using the viewer, pass `--vnc` on every `pebble --emulator gabbro` operation (or `--emulator emery` for Time 2); switching to SDL stops the browser display.
 
 The requested demo preset is stationary GPS at hole 14's mapped starting tee:
 

@@ -1,8 +1,10 @@
 #pragma once
 // Coordinates use 1/16 of an overview-map pixel to retain close-up detail.
 // MAP_W x MAP_H is the watch map layer; tall to suit tee-at-bottom hole maps.
+#ifndef MAP_W
 #define MAP_W 160
 #define MAP_H 172
+#endif
 typedef struct { float zoom, x, y; } MapCamera;
 static inline float camera_min(float a,float b) {return a<b?a:b;}
 static inline float camera_max(float a,float b) {return a>b?a:b;}
