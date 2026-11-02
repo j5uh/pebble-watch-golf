@@ -1,6 +1,6 @@
-# Pebble Golf
+# Fairway Finder
 
-Native C rangefinder for **Pebble Round 2 (`gabbro`)**, with **Sharpstown Park Golf Course, Houston** built in and more courses downloaded on demand. Version 0.2.0.
+Native C rangefinder for **Pebble Round 2 (`gabbro`) and Pebble Time 2 (`emery`)**, with **Sharpstown Park Golf Course, Houston** built in and more courses downloaded on demand. Version 1.0.1.
 
 ## Playing a round
 

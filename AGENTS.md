@@ -1,4 +1,4 @@
-# Pebble Golf
+# Fairway Finder
 
 Work in this directory. This is a native C watchapp for Pebble Round 2 (`gabbro`, 260x260 round) and Pebble Time 2 (`emery`, 200x228 rectangular), with PebbleKit JS on the paired phone. It does not use Alloy.
 

@@ -131,7 +131,7 @@ static void render(void) {
   // Skip straight to Greenside when the hazard view would show the same hazards.
   if (screen==SCREEN_PLAY && page==1 && hazards_redundant()) page=2;
   bool live=usable();
-  const char *unit=units?"METERS":"YARDS", *name=course_ready?course_short:"PEBBLE GOLF";
+  const char *unit=units?"METERS":"YARDS", *name=course_ready?course_short:"FAIRWAY FINDER";
   snprintf(heading_text,sizeof(heading_text),"%s",name);
   left_text[0]=right_text[0]=left_cap[0]=right_cap[0]='\0';
   main_font=FONT_KEY_GOTHIC_28_BOLD;

@@ -1,7 +1,7 @@
 # Open golf course data
 
 Golf course maps built from OpenStreetMap, checked for completeness and published as
-plain files. Pebble Golf uses them, but they're meant for any app. License: ODbL 1.0,
+plain files. Fairway Finder uses them, but they're meant for any app. License: ODbL 1.0,
 © OpenStreetMap contributors ([details](LICENSE.md)).
 
 ## Download
@@ -12,7 +12,7 @@ Generated files are published at https://j5uh.github.io/pebble-watch-golf/:
 |---|---|
 | `index.json` | Every course: `id`, `name`, `short`, `city`, `center` [lat, lon], `version` |
 | `<id>.geojson` | Standard GeoJSON (`[lon, lat]`). Open it in geojson.io, QGIS, Mapbox, Leaflet. |
-| `<id>.json` | Pebble Golf's own format (`[lat, lon]`), including per-hole watch maps (`mapHex`) |
+| `<id>.json` | Fairway Finder's own format (`[lat, lon]`), including per-hole watch maps (`mapHex`) |
 
 GeoJSON features carry a `golf` property:
 

@@ -1,14 +1,14 @@
 {
   "name": "pebble-golf",
-  "author": "Pebble Golf",
-  "version": "1.0.0",
+  "author": "Fairway Finder",
+  "version": "1.0.1",
   "keywords": [
     "pebble-app"
   ],
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "Pebble Golf",
+    "displayName": "Fairway Finder",
     "uuid": "1ab812f6-5d39-4e48-85dc-2a56babb1850",
     "sdkVersion": "3",
     "enableMultiJS": true,
