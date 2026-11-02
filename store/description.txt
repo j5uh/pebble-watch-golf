@@ -1,0 +1,12 @@
+Golf GPS yardages on your wrist, for Pebble Round 2 and Pebble Time 2.
+
+- Front, middle and back of the green, plus a layup target that leaves your preferred distance.
+- Reach and carry yardages for the bunkers and water still ahead of you.
+- A greenside view of the green and its bunkers, and a hole map with your position.
+- Pick a course from a nearest-first list. Courses can be saved on your phone for play without signal.
+- Up/Down changes holes; Select cycles views; hold Select for settings. Yards or meters.
+
+Distances use your phone's GPS (keep the Pebble app running). Stale or missing fixes are shown as unavailable, never guessed. Green targets are the mapped green, not today's pin.
+
+Course maps © OpenStreetMap contributors, ODbL. Open source (MIT): https://github.com/j5uh/pebble-watch-golf
+Missing your course? Request it from the app's phone settings page.
