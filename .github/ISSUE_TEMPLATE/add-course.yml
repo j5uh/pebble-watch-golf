@@ -1,0 +1,27 @@
+name: Request a course
+description: Ask for a golf course to be added to Pebble Golf.
+title: "Add course: "
+labels: [course request]
+body:
+  - type: input
+    id: course
+    attributes:
+      label: Course name
+    validations:
+      required: true
+  - type: input
+    id: city
+    attributes:
+      label: City, state or country
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Course website or map link
+      description: Optional. Any link that pins down which course you mean.
+  - type: textarea
+    id: scorecard
+    attributes:
+      label: Scorecard
+      description: Optional. Drag in a photo of the scorecard or paste a link, so the tee yardages are right.

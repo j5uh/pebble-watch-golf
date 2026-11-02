@@ -43,6 +43,9 @@ data/courses/<id>/
 
 ## Add a course
 
+Not technical? [Request a course](https://github.com/j5uh/pebble-watch-golf/issues/new?template=add-course.yml)
+with its name, city, and a scorecard photo, and a maintainer will add it. To add one yourself:
+
 1. Make sure the course is mapped in OSM: `golf=hole` ways with `ref` and `par` that end
    inside a `golf=green`, plus bunkers and water. Fix gaps in OSM itself so everyone benefits.
 2. Download the course area from [Overpass Turbo](https://overpass-turbo.eu/) (export → raw OSM data)
