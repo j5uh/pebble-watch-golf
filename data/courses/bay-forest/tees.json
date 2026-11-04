@@ -1,0 +1,15 @@
+{
+  "course": "Bay Forest Golf Course",
+  "short": "BAY FOREST",
+  "city": "La Porte, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/51557948",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3089-bay-forest-golf-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLUE", "totalYards": 6814},
+    {"name": "WHITE", "totalYards": 6274},
+    {"name": "GOLD", "totalYards": 5661},
+    {"name": "RED", "totalYards": 5132}
+  ]
+}

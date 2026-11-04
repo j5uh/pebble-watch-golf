@@ -1,0 +1,16 @@
+{
+  "course": "The Woodlands - Panther Trail",
+  "short": "PANTHER TR",
+  "city": "The Woodlands, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6531145",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/12752-the-golf-trails-of-the-woodlands-panther-trail-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7008},
+    {"name": "BLUE", "totalYards": 6582},
+    {"name": "WHITE", "totalYards": 6150},
+    {"name": "GOLD", "totalYards": 5587},
+    {"name": "GREEN", "totalYards": 4996}
+  ]
+}

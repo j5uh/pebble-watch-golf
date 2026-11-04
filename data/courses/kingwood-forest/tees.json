@@ -1,0 +1,15 @@
+{
+  "course": "Kingwood Country Club - Forest Course",
+  "short": "KW FOREST",
+  "city": "Kingwood, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/5976406",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/12718-forest-at-kingwood-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "GOLD", "totalYards": 7058},
+    {"name": "BLUE", "totalYards": 6550},
+    {"name": "WHITE", "totalYards": 6082},
+    {"name": "SILVER", "totalYards": 5564}
+  ]
+}

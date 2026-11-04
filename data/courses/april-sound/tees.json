@@ -1,0 +1,15 @@
+{
+  "course": "April Sound Country Club - White/Blue",
+  "short": "APRIL SND",
+  "city": "Montgomery, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/7065965",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3182-white-and-blue-at-april-sound-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLUE", "totalYards": 6282},
+    {"name": "WHITE", "totalYards": 5930},
+    {"name": "RED", "totalYards": 5362},
+    {"name": "GOLD", "totalYards": 4803}
+  ]
+}

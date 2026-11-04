@@ -1,0 +1,16 @@
+{
+  "course": "Augusta Pines Golf Club",
+  "short": "AUGUSTA PN",
+  "city": "Spring, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/1033966141",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22790-augusta-pines-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "PRO", "totalYards": 7041},
+    {"name": "MASTERS", "totalYards": 6446},
+    {"name": "MEMBERS", "totalYards": 6140},
+    {"name": "FORWARD", "totalYards": 5606},
+    {"name": "FIRST", "totalYards": 5007}
+  ]
+}

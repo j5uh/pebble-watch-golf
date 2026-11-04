@@ -33,7 +33,8 @@ assert.ok(layup.shot>geo.distance([0,0],dogleg.center)-100+20,'dogleg uses targe
 assert.equal(geo.layup(dogleg.center,dogleg,100),null,'no layup when already inside approach distance');
 for(const hole of all.flatMap(c=>c.holes)) {
   for(const hazard of geo.hazardDistances(hole.tee,hole)) assert.ok(hazard.reach>=0 && hazard.carry>=hazard.reach);
-  const shot=geo.layup(hole.tee,hole,91.44);assert.ok(shot && Math.abs(geo.distance(shot.target,hole.center)-91.44)<0.2,`hole ${hole.number} layup`);
+  // Holes mapped from forward tees can start inside layup distance; those get no layup.
+  const shot=geo.layup(hole.tee,hole,91.44);assert.ok(shot ? Math.abs(geo.distance(shot.target,hole.center)-91.44)<0.2 : geo.distance(hole.tee,hole.center)<=91.44,`hole ${hole.number} layup`);
 }
 console.log('Hazard edge distances, behind/inside handling, dogleg layups and all hole targets on every course passed.');
 

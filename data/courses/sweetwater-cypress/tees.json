@@ -1,0 +1,16 @@
+{
+  "course": "Sweetwater Country Club - Cypress Course",
+  "short": "SW CYPRESS",
+  "city": "Sugar Land, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/4491651",
+  "osmCourse": "Cypress Course",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3343-cypress-at-sweetwater-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLUE", "totalYards": 6689},
+    {"name": "WHITE", "totalYards": 6299},
+    {"name": "GOLD", "totalYards": 5729},
+    {"name": "RED", "totalYards": 5301}
+  ]
+}

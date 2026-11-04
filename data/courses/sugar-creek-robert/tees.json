@@ -1,0 +1,17 @@
+{
+  "course": "Sugar Creek Country Club - Robert Nine",
+  "short": "SC ROBERT",
+  "city": "Sugar Land, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/216961892",
+  "osmCourse": "Robert",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA); front nine of the Robert/Trent scorecard",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3347-robert-trent-at-sugar-creek-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "CHAMP", "totalYards": 3398},
+    {"name": "BACK", "totalYards": 3125},
+    {"name": "MIDDLE", "totalYards": 2877},
+    {"name": "FORWARD", "totalYards": 2575},
+    {"name": "SHORT", "totalYards": 1864}
+  ]
+}

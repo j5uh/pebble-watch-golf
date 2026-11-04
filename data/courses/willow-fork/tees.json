@@ -1,0 +1,15 @@
+{
+  "course": "Willow Fork Country Club",
+  "short": "WILLOWFORK",
+  "city": "Katy, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/1528669",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3066-willow-fork-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLUE", "totalYards": 6978},
+    {"name": "WHITE", "totalYards": 6546},
+    {"name": "GOLD", "totalYards": 6208},
+    {"name": "RED", "totalYards": 5666}
+  ]
+}

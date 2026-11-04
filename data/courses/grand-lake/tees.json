@@ -1,0 +1,16 @@
+{
+  "course": "Grand Lake Golf Club",
+  "short": "GRAND LAKE",
+  "city": "Montgomery, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/1184326104",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22761-grand-lake-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7202},
+    {"name": "GOLD", "totalYards": 6842},
+    {"name": "BLUE", "totalYards": 6505},
+    {"name": "WHITE", "totalYards": 6079},
+    {"name": "RED", "totalYards": 5350}
+  ]
+}

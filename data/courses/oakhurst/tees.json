@@ -1,0 +1,15 @@
+{
+  "course": "Oakhurst Golf Club",
+  "short": "OAKHURST",
+  "city": "Porter, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6124798",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3244-oakhurst-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "CHAMP", "totalYards": 7002},
+    {"name": "OAKHURST", "totalYards": 6242},
+    {"name": "SENIOR", "totalYards": 5647},
+    {"name": "FRONT", "totalYards": 5188}
+  ]
+}

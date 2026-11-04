@@ -1,0 +1,15 @@
+{
+  "course": "Southwyck Golf Club",
+  "short": "SOUTHWYCK",
+  "city": "Pearland, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/8558130",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3229-southwyck-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "GREEN", "totalYards": 6914},
+    {"name": "GOLD", "totalYards": 6394},
+    {"name": "BLACK", "totalYards": 5867},
+    {"name": "GREY", "totalYards": 5145}
+  ]
+}

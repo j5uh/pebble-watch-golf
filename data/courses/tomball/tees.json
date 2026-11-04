@@ -1,0 +1,15 @@
+{
+  "course": "Tomball Country Club",
+  "short": "TOMBALL CC",
+  "city": "Tomball, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/195023891",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/15267-tomball-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLUE", "totalYards": 6275},
+    {"name": "WHITE", "totalYards": 5849},
+    {"name": "GOLD", "totalYards": 5412},
+    {"name": "RED", "totalYards": 4986}
+  ]
+}

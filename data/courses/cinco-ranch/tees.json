@@ -1,0 +1,15 @@
+{
+  "course": "The Golf Club at Cinco Ranch",
+  "short": "CINCO RNCH",
+  "city": "Katy, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/1527947",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3064-golf-club-at-cinco-ranch/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 6922},
+    {"name": "BLUE", "totalYards": 6396},
+    {"name": "WHITE", "totalYards": 5822},
+    {"name": "FORWARD", "totalYards": 5167}
+  ]
+}

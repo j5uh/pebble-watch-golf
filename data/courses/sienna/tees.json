@@ -1,0 +1,15 @@
+{
+  "course": "Sienna Golf Club",
+  "short": "SIENNA",
+  "city": "Missouri City, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/5451829",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22745-sienna-plantation-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7002},
+    {"name": "BLUE", "totalYards": 6445},
+    {"name": "WHITE", "totalYards": 5895},
+    {"name": "GREEN", "totalYards": 5096}
+  ]
+}

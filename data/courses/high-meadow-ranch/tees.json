@@ -1,0 +1,16 @@
+{
+  "course": "High Meadow Ranch Golf Club",
+  "short": "HIGH MEADW",
+  "city": "Magnolia, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6545607",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/16188-high-meadow-ranch-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "MEDAL", "totalYards": 7370},
+    {"name": "GOLD", "totalYards": 6839},
+    {"name": "GREEN", "totalYards": 6258},
+    {"name": "WHITE", "totalYards": 5614},
+    {"name": "MAROON", "totalYards": 4965}
+  ]
+}

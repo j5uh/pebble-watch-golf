@@ -1,0 +1,15 @@
+{
+  "course": "Golf Club of Houston - Tournament Course",
+  "short": "GCH TOURN",
+  "city": "Humble, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/193396474",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/18193-golf-club-of-houston-tournament-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "TOURNEY", "totalYards": 7425},
+    {"name": "BLUE", "totalYards": 6571},
+    {"name": "WHITE", "totalYards": 5945},
+    {"name": "GREEN", "totalYards": 5404}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "course": "Shadow Hawk Golf Club",
+  "short": "SHADOWHAWK",
+  "city": "Richmond, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/49631870",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3263-shadow-hawk-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "HAWK", "totalYards": 7207},
+    {"name": "BLUE", "totalYards": 6803},
+    {"name": "SILVER", "totalYards": 6472},
+    {"name": "WHITE", "totalYards": 6073},
+    {"name": "BRONZE", "totalYards": 5544},
+    {"name": "GOLD", "totalYards": 5182}
+  ]
+}

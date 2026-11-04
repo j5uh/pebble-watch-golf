@@ -1,0 +1,17 @@
+{
+  "course": "Bentwater Yacht & Country Club - Grand Pines",
+  "short": "BW GRAND P",
+  "city": "Montgomery, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/629918707",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22746-bentwater-yacht-country-club-grand-pines-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7100},
+    {"name": "GRAND", "totalYards": 6877},
+    {"name": "BLUE", "totalYards": 6712},
+    {"name": "PINES", "totalYards": 6383},
+    {"name": "WHITE", "totalYards": 6181},
+    {"name": "OSPREY", "totalYards": 5741}
+  ]
+}

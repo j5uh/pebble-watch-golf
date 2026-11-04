@@ -1,0 +1,15 @@
+{
+  "course": "River Plantation Country Club",
+  "short": "RIVER PLNT",
+  "city": "Conroe, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/5160644",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/2831-augusta-biloxi-at-river-plantation-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 6882},
+    {"name": "GOLD", "totalYards": 6301},
+    {"name": "WHITE", "totalYards": 5815},
+    {"name": "RED", "totalYards": 5070}
+  ]
+}

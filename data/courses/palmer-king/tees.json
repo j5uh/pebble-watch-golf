@@ -1,0 +1,16 @@
+{
+  "course": "Woodlands CC Palmer - King Nine",
+  "short": "PALMER KNG",
+  "city": "The Woodlands, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/1703101",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA); front nine of the King/General scorecard",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/12756-palmer-at-woodlands-country-club-king-general/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 3602},
+    {"name": "BLUE", "totalYards": 3306},
+    {"name": "WHITE", "totalYards": 3082},
+    {"name": "GOLD", "totalYards": 2945},
+    {"name": "GREEN", "totalYards": 2625}
+  ]
+}

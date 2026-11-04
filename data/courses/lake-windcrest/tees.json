@@ -1,0 +1,17 @@
+{
+  "course": "Lake Windcrest Golf Club",
+  "short": "WINDCREST",
+  "city": "Magnolia, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/7065970",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22857-lake-windcrest-golf-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7040},
+    {"name": "GOLD", "totalYards": 6574},
+    {"name": "BLUE", "totalYards": 6075},
+    {"name": "WHITE", "totalYards": 5679},
+    {"name": "GREEN", "totalYards": 5030},
+    {"name": "ORANGE", "totalYards": 4001}
+  ]
+}

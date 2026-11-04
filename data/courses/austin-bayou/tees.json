@@ -1,0 +1,14 @@
+{
+  "course": "Austin Bayou Golf Course",
+  "short": "AUSTIN BYU",
+  "city": "Danbury, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/1017745078",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/31795-austin-bayou-golf-course-rv-park/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLUE", "totalYards": 3166},
+    {"name": "WHITE", "totalYards": 2886},
+    {"name": "RED", "totalYards": 2609}
+  ]
+}

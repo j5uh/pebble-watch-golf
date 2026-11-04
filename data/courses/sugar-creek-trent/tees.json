@@ -1,0 +1,18 @@
+{
+  "course": "Sugar Creek Country Club - Trent Nine",
+  "short": "SC TRENT",
+  "city": "Sugar Land, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/216961892",
+  "snapshot": "sugar-creek-robert",
+  "osmCourse": "Trent",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA); front nine of the Trent/Jones scorecard",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3342-trent-jones-at-sugar-creek-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "CHAMP", "totalYards": 3528},
+    {"name": "BACK", "totalYards": 3232},
+    {"name": "MIDDLE", "totalYards": 3009},
+    {"name": "FORWARD", "totalYards": 2717},
+    {"name": "SHORT", "totalYards": 2092}
+  ]
+}

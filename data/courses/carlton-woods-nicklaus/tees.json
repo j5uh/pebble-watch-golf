@@ -1,0 +1,15 @@
+{
+  "course": "The Club at Carlton Woods - Nicklaus Course",
+  "short": "CW NICKLAU",
+  "city": "The Woodlands, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/5500982",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22812-the-club-at-carlton-woods-nicklaus-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "NICKLAUS", "totalYards": 7655},
+    {"name": "II", "totalYards": 6819},
+    {"name": "III", "totalYards": 6214},
+    {"name": "IV", "totalYards": 5321}
+  ]
+}

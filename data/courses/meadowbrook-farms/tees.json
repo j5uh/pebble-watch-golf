@@ -1,0 +1,15 @@
+{
+  "course": "Meadowbrook Farms Golf Club",
+  "short": "MEADOWBRK",
+  "city": "Katy, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/107268266",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22728-meadowbrook-farms-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "TOURNEY", "totalYards": 7100},
+    {"name": "CHAMP", "totalYards": 6600},
+    {"name": "REGULAR", "totalYards": 6000},
+    {"name": "FORWARD", "totalYards": 5000}
+  ]
+}

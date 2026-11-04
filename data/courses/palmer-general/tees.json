@@ -1,0 +1,16 @@
+{
+  "course": "Woodlands CC Palmer - General Nine",
+  "short": "PALMER GEN",
+  "city": "The Woodlands, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/1703110",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA); front nine of the General/Deacon scorecard",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/12755-palmer-at-woodlands-country-club-general-deacon/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 3597},
+    {"name": "BLUE", "totalYards": 3359},
+    {"name": "WHITE", "totalYards": 3131},
+    {"name": "GOLD", "totalYards": 2993},
+    {"name": "GREEN", "totalYards": 2714}
+  ]
+}

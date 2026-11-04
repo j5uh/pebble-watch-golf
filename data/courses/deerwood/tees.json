@@ -1,0 +1,17 @@
+{
+  "course": "Deerwood Club",
+  "short": "DEERWOOD",
+  "city": "Kingwood, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/5976409",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3080-deerwood-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7196},
+    {"name": "GREEN", "totalYards": 6576},
+    {"name": "WHITE", "totalYards": 6139},
+    {"name": "BLUE", "totalYards": 5801},
+    {"name": "GOLD", "totalYards": 5422},
+    {"name": "SILVER", "totalYards": 3856}
+  ]
+}

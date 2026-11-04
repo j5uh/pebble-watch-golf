@@ -1,0 +1,16 @@
+{
+  "course": "Magnolia Creek Golf Links",
+  "short": "MAGNOLIA C",
+  "city": "League City, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/357581616",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22720-magnolia-creek-scotland-ireland-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "VARDON", "totalYards": 7349},
+    {"name": "OLD TOM", "totalYards": 6793},
+    {"name": "ARMOUR", "totalYards": 6449},
+    {"name": "WILLIE", "totalYards": 6185},
+    {"name": "VARE", "totalYards": 5380}
+  ]
+}

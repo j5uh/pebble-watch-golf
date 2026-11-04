@@ -1,0 +1,16 @@
+{
+  "course": "Golf Club of Houston - Member Course",
+  "short": "GCH MEMBER",
+  "city": "Humble, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/193396473",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/18196-golf-club-of-houston-member-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7508},
+    {"name": "GOLD", "totalYards": 7069},
+    {"name": "BLUE", "totalYards": 6517},
+    {"name": "WHITE", "totalYards": 6084},
+    {"name": "RED", "totalYards": 5384}
+  ]
+}

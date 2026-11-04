@@ -1,0 +1,16 @@
+{
+  "course": "South Shore Harbour - South Nine",
+  "short": "SSH SOUTH",
+  "city": "League City, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/5677911",
+  "osmCourse": "South Course",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA); front nine of the South/Shore scorecard",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3095-south-shore-at-south-shore-harbour-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 3386},
+    {"name": "BLUE", "totalYards": 3170},
+    {"name": "WHITE", "totalYards": 2865},
+    {"name": "RED", "totalYards": 2563}
+  ]
+}

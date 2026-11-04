@@ -1,0 +1,17 @@
+{
+  "course": "River Oaks Country Club",
+  "short": "RIVER OAKS",
+  "city": "Houston, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/123419610",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3040-river-oaks-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "TIPS", "totalYards": 7125},
+    {"name": "BLACK", "totalYards": 7026},
+    {"name": "BLUE", "totalYards": 6647},
+    {"name": "WHITE", "totalYards": 6191},
+    {"name": "YELLOW", "totalYards": 5576},
+    {"name": "RED", "totalYards": 4997}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "course": "Highland Pines Golf Club",
+  "short": "HIGHLAND P",
+  "city": "Porter, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/1234945362",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/43448-highland-pines-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "PRO", "totalYards": 7307},
+    {"name": "MASTERS", "totalYards": 6703},
+    {"name": "MEMBERS", "totalYards": 6108},
+    {"name": "FORWARD", "totalYards": 5667},
+    {"name": "FIRST", "totalYards": 4999}
+  ]
+}

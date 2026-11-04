@@ -1,0 +1,15 @@
+{
+  "course": "Windrose Golf Club",
+  "short": "WINDROSE",
+  "city": "Spring, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6154881",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/3332-windrose-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BACK", "totalYards": 7203},
+    {"name": "MIDDLE", "totalYards": 6608},
+    {"name": "SENIOR", "totalYards": 6069},
+    {"name": "FRONT", "totalYards": 5355}
+  ]
+}

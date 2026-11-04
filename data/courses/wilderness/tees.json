@@ -1,0 +1,15 @@
+{
+  "course": "The Wilderness Golf Course",
+  "short": "WILDERNESS",
+  "city": "Lake Jackson, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/215254770",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22716-wilderness-golf-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7106},
+    {"name": "MAROON", "totalYards": 6720},
+    {"name": "GREEN", "totalYards": 6151},
+    {"name": "ORANGE", "totalYards": 5414}
+  ]
+}

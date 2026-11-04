@@ -1,0 +1,16 @@
+{
+  "course": "Woodlands Country Club - Tournament Course",
+  "short": "WCC TOURN",
+  "city": "The Woodlands, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6154993",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/12753-woodlands-country-club-tournament-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 7025},
+    {"name": "BLUE", "totalYards": 6608},
+    {"name": "WHITE", "totalYards": 6296},
+    {"name": "GOLD", "totalYards": 5723},
+    {"name": "GREEN", "totalYards": 5248}
+  ]
+}

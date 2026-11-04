@@ -1,0 +1,17 @@
+{
+  "course": "Longwood Golf Club - Post Oak Nine",
+  "short": "LW POST OK",
+  "city": "Cypress, TX",
+  "osmUrl": "https://www.openstreetmap.org/relation/6941062",
+  "snapshot": "longwood-palmetto",
+  "osmCourse": "Post Oak Course",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/14580-longwood-golf-club-post-oak-course/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "CHAMP", "totalYards": 3407},
+    {"name": "BACK", "totalYards": 3157},
+    {"name": "MIDDLE", "totalYards": 2760},
+    {"name": "FORWARD", "totalYards": 2503}
+  ]
+}

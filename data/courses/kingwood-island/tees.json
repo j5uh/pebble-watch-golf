@@ -1,0 +1,15 @@
+{
+  "course": "Kingwood Country Club - Island Course",
+  "short": "KW ISLAND",
+  "city": "Kingwood, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/219054001",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/12719-island-at-kingwood-country-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "GOLD", "totalYards": 7253},
+    {"name": "BLUE", "totalYards": 6777},
+    {"name": "WHITE", "totalYards": 6407},
+    {"name": "SILVER", "totalYards": 5821}
+  ]
+}

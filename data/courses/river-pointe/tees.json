@@ -1,0 +1,15 @@
+{
+  "course": "River Pointe Golf Club",
+  "short": "RIVERPOINT",
+  "city": "Richmond, TX",
+  "osmUrl": "https://www.openstreetmap.org/way/1121066818",
+  "source": "GolfPass scorecard (not yet checked against the course tee sheet or USGA)",
+  "sourceUrl": "https://www.golfpass.com/travel-advisor/courses/22799-river-pointe-golf-club/scorecard-and-layout",
+  "verifiedDate": "2026-11-04",
+  "tees": [
+    {"name": "BLACK", "totalYards": 6969},
+    {"name": "BLUE", "totalYards": 6320},
+    {"name": "WHITE", "totalYards": 5684},
+    {"name": "RED", "totalYards": 5097}
+  ]
+}
